@@ -217,13 +217,6 @@ export default function App() {
       {/* RIGHT: Main area — scrolls independently */}
       <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
 
-        {/* Top header bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <span style={{ fontSize: 13, color: "#666" }}>← Madhusha</span>
-          <span style={{ fontWeight: 700, fontSize: 18, color: "#5a4db5" }}>🧬 MediLab Hospital</span>
-          <span style={{ fontSize: 13, color: "#666" }}>Prasad 🌍</span>
-        </div>
-
         {/* Only show Staff page content when Staff is active */}
         {activePage === "Staff" ? (
           <>
