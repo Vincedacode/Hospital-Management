@@ -1,29 +1,22 @@
 import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { Outlet } from "react-router-dom";
 
 const DashboardLayout = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex bg-[#F5F6FA] min-h-screen">
-
-      {/* SIDEBAR */}
+    <div className="min-h-screen bg-[#F5F6FA] flex">
       <Sidebar open={open} setOpen={setOpen} />
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
-
-        {/* NAVBAR */}
+      <main className="flex-1 min-w-0 flex flex-col lg:ml-[260px]">
         <Navbar setOpen={setOpen} />
 
-        {/* PAGE CONTENT */}
-        <div className="p-4 lg:p-6">
+        <div className="p-4 md:p-6 overflow-x-hidden">
           <Outlet />
         </div>
-
-      </div>
+      </main>
     </div>
   );
 };

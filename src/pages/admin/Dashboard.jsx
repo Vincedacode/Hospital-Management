@@ -22,7 +22,7 @@ import {
 function Dashboard() {
   const stats = [
     {
-      title: "Total Patient",
+      title: "Total Patients",
       value: 20,
       icon: Users,
     },
@@ -50,7 +50,7 @@ function Dashboard() {
     { day: "Thu - 17", patients: 2200 },
     { day: "Fri - 18", patients: 1800 },
     { day: "Sat - 19", patients: 1250 },
-    { day: "Sen - 20", patients: 1350 },
+    { day: "Sun - 20", patients: 1350 },
   ];
 
   const appointments = [
@@ -167,41 +167,39 @@ function Dashboard() {
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 space-y-6 text-gray-700 max-w-[1600px] mx-auto overflow-hidden">
       
-      {/* STATS TOP BAR: Safe container that horizontal scrolls if content overflows grid boundaries */}
-      <div className="w-full overflow-x-auto pb-2">
-        <div className="grid grid-cols-4 gap-4 min-w-[640px] lg:min-w-0">
-          {stats.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={index}
-                className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 border border-gray-100"
-              >
-                <div className="p-3 bg-gray-50 rounded-lg shrink-0">
-                  <Icon className="w-6 h-6 text-gray-800" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-gray-500 truncate">
-                    {item.title}
-                  </p>
-                  <h2 className="font-bold text-xl text-gray-800 mt-0.5">
-                    {item.value}
-                  </h2>
-                </div>
+      {/* STATS TOP BAR: Fully responsive flow, wrapping naturally on mobile viewports */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        {stats.map((item, index) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={index}
+              className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 border border-gray-100"
+            >
+              <div className="p-3 bg-gray-50 rounded-lg shrink-0">
+                <Icon className="w-6 h-6 text-gray-800" />
               </div>
-            );
-          })}
-        </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-500 truncate">
+                  {item.title}
+                </p>
+                <h2 className="font-bold text-xl text-gray-800 mt-0.5">
+                  {item.value}
+                </h2>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* MID SECTION: CHART + APPOINTMENTS */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         
-        {/* PATIENTS CHART CARD */}
+        {/* PATIENTS CHART CARD (Acceptable horizontal scrolling fallback on very narrow viewports) */}
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 xl:col-span-2 flex flex-col justify-between overflow-x-auto">
-          <div className="min-w-[450px]">
+          <div className="min-w-[440px] sm:min-w-0">
             <div className="flex justify-between items-center mb-1">
-              <h3 className="font-bold text-gray-800 text-base sm:text-lg">paitents</h3>
+              <h3 className="font-bold text-gray-800 text-base sm:text-lg">Patients</h3>
               <select className="text-blue-500 text-xs sm:text-sm bg-transparent font-medium border-none outline-none cursor-pointer">
                 <option>7 days</option>
               </select>
@@ -247,12 +245,12 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* APPOINTMENTS CARD */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between overflow-x-auto">
-          <div className="min-w-[340px] relative">
+        {/* APPOINTMENTS CARD: Fixed rigid dimensions to wrap seamlessly on small viewports */}
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between w-full overflow-hidden">
+          <div className="w-full relative">
             
-            {/* Popover actions */}
-            <div className="absolute right-2 top-10 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-10 w-40 space-y-0.5">
+            {/* Popover actions adjusted to fit safely within viewport confines */}
+            <div className="absolute right-0 top-10 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-10 w-36 space-y-0.5">
               <button className="flex items-center gap-2.5 w-full px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                 <Trash2 size={14} /> Reject
               </button>
@@ -278,19 +276,19 @@ function Dashboard() {
               {appointments.map((item, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center text-sm px-1 gap-4"
+                  className="flex justify-between items-center text-sm px-1 gap-2"
                 >
                   <div className="min-w-0 flex-1">
                     <h4 className="font-semibold text-gray-800 truncate">
                       {item.name}
                     </h4>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0 text-right">
-                    <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
-                      {item.date}
+                  <div className="flex items-center gap-2 shrink-0 text-right">
+                    <span className="text-[11px] sm:text-xs text-gray-400 font-mono whitespace-nowrap">
+                      {item.date.split(" ")[0]} {/* Truncates time if spacing gets strict on dynamic sizes */}
                     </span>
                     <span
-                      className={`text-[11px] px-2.5 py-0.5 font-medium rounded-md w-16 text-center inline-block shrink-0 ${
+                      className={`text-[10px] sm:text-[11px] px-2 py-0.5 font-medium rounded-md w-14 sm:w-16 text-center inline-block shrink-0 ${
                         item.status === "Accept"
                           ? "bg-green-100 text-green-600"
                           : item.status === "Rejected"
@@ -307,7 +305,7 @@ function Dashboard() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex justify-center items-center gap-1.5 pt-6 mt-4 border-t border-gray-50 min-w-[340px]">
+          <div className="flex justify-center items-center gap-1 sm:gap-1.5 pt-6 mt-4 border-t border-gray-50 w-full">
             <button className="p-1.5 rounded-lg bg-gray-100 text-gray-400 hover:bg-gray-200">
               <ChevronLeft size={14} />
             </button>
@@ -339,7 +337,7 @@ function Dashboard() {
         </div>
 
         <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[900px] text-sm text-left border-collapse">
+          <table className="w-full min-w-[900px] text-sm text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-gray-50 text-gray-500 uppercase text-[11px] tracking-wider font-bold border-b border-gray-100">
                 <th className="p-3 pl-4 w-14">ID</th>
@@ -399,7 +397,7 @@ function Dashboard() {
         </div>
 
         <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[750px] text-sm text-left border-collapse">
+          <table className="w-full min-w-[750px] text-sm text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-gray-50 text-gray-500 uppercase text-[11px] tracking-wider font-bold border-b border-gray-100">
                 <th className="p-3 pl-4 w-14">ID</th>
