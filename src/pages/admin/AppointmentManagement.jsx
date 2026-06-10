@@ -13,28 +13,28 @@ import {
 
 function AppointmentManagement() {
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+    <div className="bg-gray-100 p-3 sm:p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+      <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm p-4 sm:p-5">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">
           Appointment Management
         </h1>
       </div>
 
       {/* Form Section */}
-      <div className="bg-white rounded-2xl shadow-md p-4 md:p-8">
+      <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-5 lg:p-8">
         {/* Top Actions */}
-        <div className="flex flex-col lg:flex-row justify-between gap-4 mb-8">
-          <button className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 w-full lg:w-fit shadow-md">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-8">
+          <button className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 w-full sm:w-auto shadow-md">
             <FileText size={18} />
             Generate Report
           </button>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
             <input
               type="text"
               placeholder="ID"
-              className="border-2 border-gray-300 rounded-xl px-4 py-3 w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="border-2 border-gray-300 rounded-xl px-4 py-3 w-full sm:w-[280px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
 
             <button className="bg-yellow-400 hover:bg-yellow-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md">
@@ -45,7 +45,7 @@ function AppointmentManagement() {
         </div>
 
         {/* Form Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
           {/* First Name */}
           <div className="relative">
             <User
@@ -119,7 +119,7 @@ function AppointmentManagement() {
         </div>
 
         {/* Gender, Appointment Date, Time */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5 mt-5">
           <select className="border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option>Gender</option>
             <option>Male</option>
@@ -150,7 +150,7 @@ function AppointmentManagement() {
         </div>
 
         {/* Department & Doctor */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 mt-5">
           <div className="relative">
             <select className="w-full border-2 border-gray-300 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
               <option>Department Name</option>
@@ -183,23 +183,23 @@ function AppointmentManagement() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap justify-center gap-4 mt-8">
-          <button className="bg-gradient-to-r from-green-700 to-lime-500 text-white font-semibold px-10 py-3 rounded-xl shadow-md hover:scale-105 transition">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+          <button className="w-full bg-gradient-to-r from-green-700 to-lime-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition">
             Register
           </button>
 
-          <button className="bg-gradient-to-r from-indigo-700 to-purple-500 text-white font-semibold px-10 py-3 rounded-xl shadow-md hover:scale-105 transition">
+          <button className="w-full bg-gradient-to-r from-indigo-700 to-purple-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition">
             Update
           </button>
 
-          <button className="bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold px-10 py-3 rounded-xl shadow-md hover:scale-105 transition">
+          <button className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition">
             Delete
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-md p-4 md:p-6 mt-8">
+      <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-5 lg:p-6 overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800">
           Recent Appointments
         </h2>
@@ -208,8 +208,8 @@ function AppointmentManagement() {
           View recently registered appointments.
         </p>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px]">
+        <div className="overflow-x-auto rounded-xl">
+          <table className="w-full min-w-[850px] text-sm">
             <thead>
               <tr className="bg-gray-100">
                 <th className="text-left p-4">ID</th>
