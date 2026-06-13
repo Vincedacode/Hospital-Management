@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth"; // Adjust if you have a custom useAuth hook
 import {
   User,
   LogOut,
@@ -5,6 +7,24 @@ import {
 } from "lucide-react";
 
 const Navbar = ({ setOpen }) => {
+  const [userName, setUserName] = useState("User"); // Default fallback name
+  const auth = getAuth();
+
+  useEffect(() => {
+    // Listen to Firebase Auth state shifts
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Fallback cascade: profile display name -> email prefix -> fallback string
+        const name = user.displayName || user.email?.split("@")[0] || "User";
+        setUserName(name);
+      } else {
+        setUserName("Guest");
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup listener on unmount
+  }, [auth]);
+
   return (
     <div className="w-full h-[70px] bg-white border-b border-gray-200 px-4 lg:px-8 flex items-center justify-between shadow-sm">
 
@@ -43,12 +63,12 @@ const Navbar = ({ setOpen }) => {
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-4">
 
-        {/* USER */}
+        {/* DYNAMIC LOGGED IN USER */}
         <div className="hidden sm:flex items-center gap-2">
           <User size={16} className="text-gray-700" />
 
-          <span className="text-sm font-medium text-purple-600">
-            Prasad
+          <span className="text-sm font-medium text-purple-600 capitalize">
+            {userName}
           </span>
         </div>
 

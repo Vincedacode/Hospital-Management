@@ -17,6 +17,13 @@ import {
   Mail
 } from "lucide-react";
 
+import {
+  createPatient,
+  getPatients,
+  updatePatient,
+  deletePatient
+} from "../../services/patientService";
+
 const PatientManagement = () => {
   // State Management
   const [patients, setPatients] = useState([]);
@@ -26,11 +33,11 @@ const PatientManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const patientsPerPage = 5;
 
   const [formData, setFormData] = useState({
-    patientId: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -43,33 +50,23 @@ const PatientManagement = () => {
     confirmPassword: "",
   });
 
-  // Mock Seeds
-  const generateInitialPatients = () => [
-    { patientId: "P-1001", firstName: "John", lastName: "Smith", email: "john@gmail.com", mobile: "08011111111", nic: "NIC001", dob: "1998-01-01", address: "Wale", gender: "Male" },
-    { patientId: "P-1002", firstName: "Emma", lastName: "Brown", email: "emma@gmail.com", mobile: "08022222222", nic: "NIC002", dob: "1997-03-02", address: "Lekki", gender: "Female" },
-    { patientId: "P-1003", firstName: "David", lastName: "Miller", email: "david@gmail.com", mobile: "08033333333", nic: "NIC003", dob: "1995-05-10", address: "Yaba", gender: "Male" },
-    { patientId: "P-1004", firstName: "Sophia", lastName: "Wilson", email: "sophia@gmail.com", mobile: "08044444444", nic: "NIC004", dob: "1996-11-22", address: "Ikeja", gender: "Female" },
-  ];
-
-  // Lifecycle Hooks for LocalStorage
+  // Fetch Patients on Mount
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("patients"));
-    if (saved) {
-      setPatients(saved);
-    } else {
-      const initial = generateInitialPatients();
-      setPatients(initial);
-      localStorage.setItem("patients", JSON.stringify(initial));
-    }
+    const fetchPatients = async () => {
+      try {
+        setLoading(true);
+        const data = await getPatients();
+        setPatients(data || []);
+      } catch (error) {
+        console.error("Error fetching patients:", error);
+        setErrorMessage("Failed to load patient records.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
   }, []);
-
-  useEffect(() => {
-    if (patients.length > 0) {
-      localStorage.setItem("patients", JSON.stringify(patients));
-    } else if (patients.length === 0 && localStorage.getItem("patients")) {
-      localStorage.setItem("patients", JSON.stringify([]));
-    }
-  }, [patients]);
 
   // Event Handlers
   const handleChange = (e) => {
@@ -78,20 +75,34 @@ const PatientManagement = () => {
 
   const clearForm = () => {
     setFormData({
-      patientId: "", firstName: "", lastName: "", email: "", mobile: "",
-      nic: "", dob: "", address: "", gender: "", password: "", confirmPassword: "",
+      firstName: "", 
+      lastName: "", 
+      email: "", 
+      mobile: "",
+      nic: "", 
+      dob: "", 
+      address: "", 
+      gender: "", 
+      password: "", 
+      confirmPassword: "",
     });
     setEditingId(null);
     setErrorMessage("");
   };
 
-  const validateForm = () => {
+  const validateForm = (isEdit = false) => {
     if (
       !formData.firstName || !formData.lastName || !formData.email || 
       !formData.mobile || !formData.nic || !formData.dob || 
-      !formData.address || !formData.gender || !formData.password || !formData.confirmPassword
+      !formData.address || !formData.gender
     ) {
-      setErrorMessage("All fields must be filled completely.");
+      setErrorMessage("All profile fields must be filled completely.");
+      return false;
+    }
+
+    // Passwords are mandatory only for new entries
+    if (!isEdit && (!formData.password || !formData.confirmPassword)) {
+      setErrorMessage("Password fields are required for new registrations.");
       return false;
     }
 
@@ -102,7 +113,7 @@ const PatientManagement = () => {
     }
 
     const emailExists = patients.some(
-      (p) => p.email === formData.email && p.patientId !== editingId
+      (p) => p.email.toLowerCase() === formData.email.toLowerCase() && p.id !== editingId
     );
     if (emailExists) {
       setErrorMessage("This email address is already registered.");
@@ -118,41 +129,88 @@ const PatientManagement = () => {
     return true;
   };
 
-  const handleAdd = () => {
-    if (!validateForm()) return;
-    const newPatient = { ...formData, patientId: `P-${Date.now()}` };
-    setPatients([...patients, newPatient]);
-    clearForm();
+  const handleAdd = async () => {
+    if (!validateForm(false)) return;
+
+    try {
+      setLoading(true);
+      const cleanData = { ...formData };
+      delete cleanData.confirmPassword;
+
+      const docRef = await createPatient(cleanData);
+      
+      // Optimistic local state update to save network overhead bandwidth
+      const newPatient = { id: docRef.id, ...cleanData };
+      setPatients((prev) => [newPatient, ...prev]);
+
+      clearForm();
+    } catch (error) {
+      setErrorMessage("Failed to add patient record.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (patient) => {
-    setFormData(patient);
-    setEditingId(patient.patientId);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setFormData({
+      firstName: patient.firstName || "",
+      lastName: patient.lastName || "",
+      email: patient.email || "",
+      mobile: patient.mobile || "",
+      nic: patient.nic || "",
+      dob: patient.dob || "",
+      address: patient.address || "",
+      gender: patient.gender || "",
+      password: "",
+      confirmPassword: "",
+    });
+    setEditingId(patient.id);
   };
 
-  const handleUpdate = () => {
-    if (!editingId) {
-      setErrorMessage("Please select an existing patient row to update.");
-      return;
+  const handleUpdate = async () => {
+    if (!editingId) return;
+    if (!validateForm(true)) return;
+
+    try {
+      setLoading(true);
+      const { confirmPassword, ...cleanData } = formData;
+      
+      // Prevent uploading empty strings over established credentials
+      if (!cleanData.password) {
+        delete cleanData.password;
+      }
+
+      await updatePatient(editingId, cleanData);
+
+      // Local mutations sync state immediately
+      setPatients((prev) =>
+        prev.map((p) => (p.id === editingId ? { ...p, ...cleanData } : p))
+      );
+
+      clearForm();
+    } catch (error) {
+      setErrorMessage("Failed to update system records.");
+    } finally {
+      setLoading(false);
     }
-    if (!validateForm()) return;
-
-    setPatients(patients.map((p) => (p.patientId === editingId ? formData : p)));
-    clearForm();
   };
 
-  const handleDelete = (id) => {
-    const filtered = patients.filter((p) => p.patientId !== id);
-    setPatients(filtered);
-    if ((currentPage - 1) * patientsPerPage >= filtered.length && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this record?")) return;
+    
+    try {
+      setLoading(true);
+      await deletePatient(id);
+      setPatients((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      setErrorMessage("Delete operation failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
   // CDN-safe PDF Generator Function
   const generatePDF = () => {
-    // Access libraries attached to window space by CDN scripts
     const { jsPDF } = window.jspdf || {};
     
     if (!jsPDF) {
@@ -163,11 +221,10 @@ const PatientManagement = () => {
     const doc = new jsPDF();
     doc.text("Patient Directory Report", 14, 15);
     
-    // Call autoTable directly as a plugin feature bound to the doc instance
     doc.autoTable({
       startY: 25,
       head: [["Patient ID", "First Name", "Last Name", "Email", "Mobile", "NIC", "Gender"]],
-      body: patients.map((p) => [p.patientId, p.firstName, p.lastName, p.email, p.mobile, p.nic, p.gender]),
+      body: patients.map((p) => [p.id, p.firstName, p.lastName, p.email, p.mobile, p.nic, p.gender]),
     });
     
     doc.save("patient-directory.pdf");
@@ -175,7 +232,7 @@ const PatientManagement = () => {
 
   // Searching and Filtering
   const filteredPatients = patients.filter((p) =>
-    p.patientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -185,7 +242,7 @@ const PatientManagement = () => {
   const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
   const currentPatients = filteredPatients.slice(indexOfFirstPatient, indexOfLastPatient);
 
-  // Common styles to match structural form layouts
+  // Layout Configurations
   const formGroupStyle = "relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white";
   const iconStyle = "absolute left-4 top-3.5 text-gray-400 pointer-events-none";
   const inputStyle = "w-full pl-11 pr-4 py-3 bg-transparent text-gray-700 focus:outline-none placeholder-gray-400";
@@ -227,7 +284,10 @@ const PatientManagement = () => {
                 className="w-full px-4 py-2.5 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:border-indigo-500 placeholder-gray-400 transition-colors"
               />
             </div>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-medium px-6 py-2.5 rounded-xl shadow-sm transition-all transform active:scale-95">
+            <button 
+              onClick={() => setCurrentPage(1)}
+              className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white font-medium px-6 py-2.5 rounded-xl shadow-sm transition-all transform active:scale-95"
+            >
               <Search size={18} />
               Search
             </button>
@@ -335,13 +395,12 @@ const PatientManagement = () => {
               </select>
             </div>
 
-            {/* Password input with visibility feature */}
             <div className={formGroupStyle}>
               <span className={iconStyle}><Key size={18} /></span>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                placeholder="Password"
+                placeholder={editingId ? "Leave blank to keep password unchanged" : "Password"}
                 value={formData.password}
                 onChange={handleChange}
                 className={`${inputStyle} pr-12`}
@@ -355,13 +414,12 @@ const PatientManagement = () => {
               </button>
             </div>
 
-            {/* Confirm Password input */}
             <div className={formGroupStyle}>
               <span className={iconStyle}><Key size={18} /></span>
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
-                placeholder="Confirm Password"
+                placeholder={editingId ? "Confirm blank or new password" : "Confirm Password"}
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className={`${inputStyle} pr-12`}
@@ -393,13 +451,15 @@ const PatientManagement = () => {
         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
           <button 
             onClick={handleAdd}
-            className="w-full sm:w-44 py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-sm transition-all transform active:scale-95"
+            disabled={loading || !!editingId}
+            className="w-full sm:w-44 py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-sm transition-all transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
           >
             Add Patient
           </button>
           <button 
             onClick={handleUpdate}
-            className="w-full sm:w-44 py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-sm transition-all transform active:scale-95"
+            disabled={loading || !editingId}
+            className="w-full sm:w-44 py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-sm transition-all transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
           >
             Update
           </button>
@@ -417,7 +477,7 @@ const PatientManagement = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-gray-900">Recent Records</h2>
           <span className="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-            Total Systems Account Count: {patients.length}
+            Total System Records: {patients.length}
           </span>
         </div>
 
@@ -437,13 +497,21 @@ const PatientManagement = () => {
             </thead>
 
             <tbody className="divide-y divide-gray-50">
-              {currentPatients.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="p-8 text-center text-sm text-gray-500">
+                    Loading directory database records...
+                  </td>
+                </tr>
+              ) : currentPatients.length > 0 ? (
                 currentPatients.map((patient, index) => (
                   <tr 
-                    key={patient.patientId} 
+                    key={patient.id} 
                     className={`hover:bg-gray-50/70 transition-colors ${index % 2 === 1 ? 'bg-gray-50/30' : ''}`}
                   >
-                    <td className="p-4 text-sm font-medium text-gray-500 text-center">{patient.patientId}</td>
+                    <td className="p-4 text-sm font-medium text-gray-500 text-center truncate max-w-[100px]" title={patient.id}>
+                      {patient.id}
+                    </td>
                     <td className="p-4 text-sm font-semibold text-gray-900">{patient.firstName} {patient.lastName}</td>
                     <td className="p-4 text-sm text-gray-600">{patient.email}</td>
                     <td className="p-4 text-sm text-gray-600">{patient.mobile}</td>
@@ -463,7 +531,7 @@ const PatientManagement = () => {
                           <Edit2 size={16} />
                         </button>
                         <button 
-                          onClick={() => handleDelete(patient.patientId)}
+                          onClick={() => handleDelete(patient.id)}
                           className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
                         >
                           <Trash2 size={16} />
