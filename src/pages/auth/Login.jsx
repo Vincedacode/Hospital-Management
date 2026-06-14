@@ -49,22 +49,91 @@ const Login = () => {
         formData.password
       );
 
-      const user = userCredential.user;
+ const user = userCredential.user;
 
-      // FIXED: Look for the record in the "staff" collection using the Auth UID
-      const userRef = doc(db, "staff", user.uid);
-      const userSnap = await getDoc(userRef);
+// =======================
+// CHECK ADMIN COLLECTION
+// =======================
+const adminRef = doc(db, "users", user.uid);
+const adminSnap = await getDoc(adminRef);
 
-      if (!userSnap.exists()) {
-        setErrorMessage("Staff profile record not found in the staff database directory.");
-        setLoading(false);
-        return;
-      }
+if (adminSnap.exists()) {
+  const adminData = adminSnap.data();
+  const adminRole = adminData.role?.toLowerCase();
 
-      const userData = userSnap.data();
-      
-      // Normalize role string casing to safeguard against uppercase typos (e.g., "Doctor" vs "doctor")
-      const userRole = userData.role ? userData.role.toLowerCase() : "";
+  if (adminRole === "admin") {
+    setSuccessMessage(
+      "Login successful! Redirecting to Admin Dashboard..."
+    );
+
+    setTimeout(() => {
+      navigate("/admin/dashboard");
+    }, 1200);
+
+    return;
+  }
+}
+
+// =======================
+// CHECK STAFF COLLECTION
+// =======================
+const staffRef = doc(db, "staff", user.uid);
+const staffSnap = await getDoc(staffRef);
+
+if (staffSnap.exists()) {
+  const staffData = staffSnap.data();
+  const staffRole = staffData.role?.toLowerCase();
+
+  if (staffRole === "doctor" || staffRole === "nurse") {
+    localStorage.setItem("staff_tier", staffRole);
+
+    setSuccessMessage(
+      `Login successful! Redirecting to ${
+        staffRole.charAt(0).toUpperCase() +
+        staffRole.slice(1)
+      } Workspace...`
+    );
+
+    setTimeout(() => {
+      navigate("/staff/dashboard");
+    }, 1200);
+
+    return;
+  }
+}
+
+// =======================
+// CHECK PATIENT COLLECTION
+// =======================
+const patientRef = doc(db, "patients", user.uid);
+const patientSnap = await getDoc(patientRef);
+
+if (patientSnap.exists()) {
+  const patientData = patientSnap.data();
+
+  localStorage.setItem("patient_uid", user.uid);
+  localStorage.setItem(
+    "patient_name",
+    `${patientData.firstName || ""} ${patientData.lastName || ""}`
+  );
+
+  setSuccessMessage(
+    "Login successful! Redirecting to Patient Portal..."
+  );
+
+  setTimeout(() => {
+    navigate("/patient/dashboard");
+  }, 1200);
+
+  return;
+}
+
+// =======================
+// NO PROFILE FOUND
+// =======================
+setErrorMessage(
+  "User account exists but no profile record was found."
+);
 
       // 2. Evaluate clinical permissions and route to the correct layout workspace
       if (userRole === "admin") {
