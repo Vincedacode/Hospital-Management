@@ -7,8 +7,7 @@ import {
   FileText,
   User,
   MapPin,
-  CheckCircle,
-  AlertCircle
+  CheckCircle
 } from "lucide-react";
 import {
   createAppointment,
@@ -17,36 +16,33 @@ import {
   deleteAppointment
 } from "../../services/appointmentService";
 import { getStaff } from "../../services/staffService";
-import { getPatients } from "../../services/patientService"; // Imported to link registered patients
+import { getPatients } from "../../services/patientService";
 
 function AppointmentManagement() {
-  // Master Lists from Database
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
 
-  // UI Control States
   const [loading, setLoading] = useState(false);
   const [tableSearchQuery, setTableSearchQuery] = useState("");
   
-  // Patient Live Search States
   const [patientSearch, setPatientSearch] = useState("");
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 
-  // Form State (Patient fields removed; tracking via patientId and patientName)
+  // Form State modified to securely record assignedDoctorId
   const [formData, setFormData] = useState({
-    id: "", // For appointment updates
+    id: "", 
     patientId: "",
     patientName: "",
     appointmentDate: "",
     appointmentTime: "",
     doctorName: "Doctor Name",
-    address: "" // Optional appointment specific notes/room location
+    assignedDoctorId: "", // Secure link key added
+    address: "" 
   });
 
-  // Pull records on component initialization
   const initData = async () => {
     setLoading(true);
     try {
@@ -59,7 +55,6 @@ function AppointmentManagement() {
       setAppointments(apptData);
       setPatients(patientData);
       
-      // Isolate active doctors
       const activeDoctors = staffData.filter(
         (member) => member.role?.toLowerCase() === "doctor"
       );
@@ -75,7 +70,6 @@ function AppointmentManagement() {
     initData();
   }, []);
 
-  // Handle typing inside the Patient Search field
   const handlePatientSearchChange = (e) => {
     const value = e.target.value;
     setPatientSearch(value);
@@ -86,7 +80,6 @@ function AppointmentManagement() {
       return;
     }
 
-    // Filter patients by Name or NIC matching input values
     const matches = patients.filter((p) => {
       const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
       return (
@@ -99,7 +92,6 @@ function AppointmentManagement() {
     setShowPatientDropdown(true);
   };
 
-  // User selects a patient from the dropdown list menu
   const handleSelectPatient = (patient) => {
     const fullName = `Patient: ${patient.firstName} ${patient.lastName}`;
     setSelectedPatient(patient);
@@ -113,7 +105,29 @@ function AppointmentManagement() {
     }));
   };
 
-  // Standard input changes
+  // Intercepts doctor assignment selection to save both Name and UID parameters
+  const handleDoctorChange = (e) => {
+    const selectedId = e.target.value;
+    
+    if (selectedId === "Doctor Name") {
+      setFormData((prev) => ({
+        ...prev,
+        doctorName: "Doctor Name",
+        assignedDoctorId: ""
+      }));
+      return;
+    }
+
+    const matchedDoc = doctors.find((doc) => doc.id === selectedId);
+    if (matchedDoc) {
+      setFormData((prev) => ({
+        ...prev,
+        assignedDoctorId: matchedDoc.id,
+        doctorName: `Dr. ${matchedDoc.firstName} ${matchedDoc.lastName}`
+      }));
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -127,20 +141,20 @@ function AppointmentManagement() {
       appointmentDate: "",
       appointmentTime: "",
       doctorName: "Doctor Name",
+      assignedDoctorId: "",
       address: ""
     });
     setPatientSearch("");
     setSelectedPatient(null);
   };
 
-  // Register appointment handler
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!formData.patientId) {
       alert("Validation Error: Please select a registered patient from the search suggestions.");
       return;
     }
-    if (formData.doctorName === "Doctor Name") {
+    if (!formData.assignedDoctorId) {
       alert("Validation Error: Please select an assigned physician.");
       return;
     }
@@ -159,7 +173,6 @@ function AppointmentManagement() {
     }
   };
 
-  // Update record handler
   const handleUpdate = async () => {
     if (!formData.id) {
       alert("Please choose an appointment record from the directory table below first.");
@@ -173,13 +186,12 @@ function AppointmentManagement() {
       const apptData = await getAppointments();
       setAppointments(apptData);
     } catch (error) {
-      alert("Failed up updating document records.");
+      alert("Failed updating document records.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete handler
   const handleDelete = async (id, event) => {
     if (event) event.stopPropagation();
     if (window.confirm("Drop this scheduling index entry permanently?")) {
@@ -197,7 +209,6 @@ function AppointmentManagement() {
     }
   };
 
-  // Form loader bound to row selection click
   const handleSelectRow = (appt) => {
     setFormData({
       id: appt.id,
@@ -206,10 +217,10 @@ function AppointmentManagement() {
       appointmentDate: appt.appointmentDate || "",
       appointmentTime: appt.appointmentTime || "",
       doctorName: appt.doctorName || "Doctor Name",
+      assignedDoctorId: appt.assignedDoctorId || "",
       address: appt.address || ""
     });
 
-    // Find the corresponding patient info to display confirmation in form card
     const associatedPatient = patients.find((p) => p.id === appt.patientId);
     if (associatedPatient) {
       setSelectedPatient(associatedPatient);
@@ -220,7 +231,6 @@ function AppointmentManagement() {
     }
   };
 
-  // Search filter criteria logic handling table lookups
   const filteredAppointments = appointments.filter((item) => {
     const nameMatch = item.patientName?.toLowerCase().includes(tableSearchQuery.toLowerCase());
     const doctorMatch = item.doctorName?.toLowerCase().includes(tableSearchQuery.toLowerCase());
@@ -257,7 +267,7 @@ function AppointmentManagement() {
               onChange={(e) => setTableSearchQuery(e.target.value)}
               className="border-2 border-gray-300 rounded-xl px-4 py-3 w-full sm:w-[280px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <button className="bg-yellow-400 hover:bg-yellow-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md">
+            <button className="bg-yellow-400 hover:bg-yellow-50 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md">
               <Search size={18} /> Search
             </button>
           </div>
@@ -348,16 +358,17 @@ function AppointmentManagement() {
               <Clock3 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
+            {/* Value binds to doc.id instead of plain text names */}
             <select
-              name="doctorName"
-              value={formData.doctorName}
-              onChange={handleInputChange}
+              name="assignedDoctorId"
+              value={formData.assignedDoctorId || "Doctor Name"}
+              onChange={handleDoctorChange}
               required
               className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="Doctor Name">Doctor Name</option>
               {doctors.map((doc) => (
-                <option key={doc.id} value={`Dr. ${doc.firstName} ${doc.lastName}`}>
+                <option key={doc.id} value={doc.id}>
                   Dr. {doc.firstName} {doc.lastName}
                 </option>
               ))}
