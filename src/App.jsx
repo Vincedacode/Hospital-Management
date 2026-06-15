@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import DashboardLayout from "./components/DashboardLayout";
 import StaffLayout from "./components/StaffLayout";
+import PatientLayout from "./components/PatientLayout";
 
 // Auth
 import Login from "./pages/auth/Login";
@@ -19,9 +20,14 @@ import Invoices from "./pages/admin/InvoiceManagement";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffPatients from "./pages/staff/PatientManagement";
 import StaffAppointments from "./pages/staff/AppointmentManagement";
-// import StaffPrescriptions from "./pages/staff/Prescriptions";
 import StaffInvoices from "./pages/staff/InvoiceManagement";
 import StaffProfile from "./pages/staff/Profile";
+
+// Patient Portal
+import PatientDashboard from "./pages/patient/Dashboard";
+import PatientAppointments from "./pages/patient/AppointmentManagement";
+import PatientInvoices from "./pages/patient/InvoiceManagement";
+import PatientProfile from "./pages/patient/Profile";
 
 function App() {
   return (
@@ -49,11 +55,21 @@ function App() {
         <Route path="dashboard" element={<StaffDashboard />} />
         <Route path="patients" element={<StaffPatients />} />
         <Route path="appointments" element={<StaffAppointments />} />
-        {/* <Route path="prescriptions" element={<StaffPrescriptions />} /> */}
         <Route path="invoices" element={<StaffInvoices />} />
         <Route path="profile" element={<StaffProfile />} />
       </Route>
 
+      {/* Patient */}
+      <Route path="/patient" element={<PatientLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+
+        <Route path="dashboard" element={<PatientDashboard />} />
+        <Route path="appointments" element={<PatientAppointments />} />
+        <Route path="invoices" element={<PatientInvoices />} />
+        <Route path="profile" element={<PatientProfile />} />
+      </Route>
+
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

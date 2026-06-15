@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -47,6 +47,17 @@ const Sidebar = ({ open, setOpen }) => {
       icon: <ReceiptText size={18} />,
     },
   ];
+
+  const navigate = useNavigate();
+
+const handleLogout = () => {
+  localStorage.removeItem("user");
+  localStorage.removeItem("token");
+  localStorage.removeItem("staff_name");
+  localStorage.removeItem("patient_name");
+
+  navigate("/login");
+};
 
   return (
     <>
@@ -113,6 +124,16 @@ const Sidebar = ({ open, setOpen }) => {
             </NavLink>
           ))}
         </nav>
+        <div className="mt-auto pt-6">
+  <button
+    onClick={handleLogout}
+    className="w-full flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-600 text-red-200 hover:text-white border border-red-400/30 py-3 rounded-xl transition-all"
+  >
+    Logout
+  </button>
+</div>
+
+        
       </aside>
     </>
   );

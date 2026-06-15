@@ -129,27 +129,33 @@ const PatientManagement = () => {
     return true;
   };
 
-  const handleAdd = async () => {
-    if (!validateForm(false)) return;
+// Inside your PatientManagement component
 
-    try {
-      setLoading(true);
-      const cleanData = { ...formData };
-      delete cleanData.confirmPassword;
+const handleAdd = async () => {
+  if (!validateForm(false)) return;
 
-      const docRef = await createPatient(cleanData);
-      
-      // Optimistic local state update to save network overhead bandwidth
-      const newPatient = { id: docRef.id, ...cleanData };
-      setPatients((prev) => [newPatient, ...prev]);
-
-      clearForm();
-    } catch (error) {
-      setErrorMessage("Failed to add patient record.");
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    
+    // createPatient now handles both Auth and Firestore
+    const newPatient = await createPatient(formData);
+    
+    // Update local state
+    setPatients((prev) => [newPatient, ...prev]);
+    clearForm();
+  } catch (error) {
+    // Handle Firebase specific error codes
+    if (error.code === 'auth/email-already-in-use') {
+      setErrorMessage("This email is already registered in Authentication.");
+    } else if (error.code === 'auth/weak-password') {
+      setErrorMessage("Password should be at least 6 characters.");
+    } else {
+      setErrorMessage("Failed to register patient: " + error.message);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (patient) => {
     setFormData({

@@ -105,10 +105,13 @@ const InvoiceManagement = () => {
       return;
     }
 
-    const payload = {
-      ...formData,
-      amount: `₦${calculatedTotal.toLocaleString()}`
-    };
+const payload = {
+  ...formData,
+  amount: `₦${calculatedTotal.toLocaleString()}`,
+  paymentStatus: editingId
+    ? invoices.find(i => i.id === editingId)?.paymentStatus || "Pending"
+    : "Pending",
+};
 
     try {
       if (editingId) {
