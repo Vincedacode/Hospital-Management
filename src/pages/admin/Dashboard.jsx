@@ -6,7 +6,8 @@ import {
   FlaskConical,
   Trash2,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  CalendarDays
 } from "lucide-react";
 
 import {
@@ -22,7 +23,7 @@ import {
 // Firebase Service Layer Modules Implementation
 import { getMedicines } from "../../services/medicineService";
 import { getPatients } from "../../services/patientService";
-import { getAppointments, updateAppointment } from "../../services/appointmentService";
+import { getAppointments } from "../../services/appointmentService";
 import { getStaff, deleteStaff } from "../../services/staffService";
 
 function Dashboard() {
@@ -64,23 +65,29 @@ function Dashboard() {
         typeof getStaff === "function" ? getStaff() : [],
       ]);
 
-      // 1. Filter Staff down to Doctors only
-      const parsedDoctors = allStaff.filter(
-        (member) => 
-          member.role?.toLowerCase() === "doctor" || 
-          member.title?.toLowerCase() === "doctor" ||
+      // 1. Filter Staff down to Doctors only (Enhanced and Inclusive)
+      const parsedDoctors = allStaff.filter((member) => {
+        const role = member.role?.toLowerCase();
+        const title = member.title?.toLowerCase();
+        const specialization = member.specialization?.toLowerCase();
+        
+        return (
+          role === "doctor" || 
+          title === "doctor" ||
+          (specialization && specialization.trim() !== "") || // Includes them if they have a designated specialty
           member.education?.includes("MBBS") ||
           member.charge
-      );
+        );
+      });
 
       // Sort chronologically and slice down to exactly 5 recent doctor profiles
       const recentDoctors = parsedDoctors
         .map((doc) => ({
           ...doc,
-          // Robust checking mechanisms resolving the "Dr. Unspecified" registration bug
           computedName: doc.name || doc.staffName || doc.practitionerName || 
                         (doc.firstName ? `Dr. ${doc.firstName} ${doc.lastName || ''}` : "Dr. Unspecified"),
-          resolvedDate: parseFirestoreTimestamp(doc.createdAt || doc.joinedDate)
+          // Fallback sequence for various naming models of timestamp fields
+          resolvedDate: parseFirestoreTimestamp(doc.createdAt || doc.joinedDate || doc.date || doc.timestamp)
         }))
         .sort((a, b) => b.resolvedDate - a.resolvedDate)
         .slice(0, 5);
@@ -111,12 +118,18 @@ function Dashboard() {
       }));
       setChartData(processedChartData);
 
-      // 4. Sort and Format Latest Appointments Queue (Includes matching fallbacks for name strings)
+      // 4. Sort and Format Latest Appointments Monitoring Queue
       const organizedAppointments = allAppointments
-        .map((app) => ({
-          ...app,
-          resolvedDateObject: parseFirestoreTimestamp(app.date || app.createdAt),
-        }))
+        .map((app) => {
+          const rawStatus = app.status || "Pending";
+          const displayStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+
+          return {
+            ...app,
+            normalizedStatus: displayStatus,
+            resolvedDateObject: parseFirestoreTimestamp(app.date || app.createdAt),
+          };
+        })
         .sort((a, b) => b.resolvedDateObject - a.resolvedDateObject)
         .slice(0, 6); 
 
@@ -150,20 +163,6 @@ function Dashboard() {
     syncDashboardData();
   }, []);
 
-  // --- Interactive State Modifications ---
-  const handleUpdateStatus = async (id, newStatus) => {
-    try {
-      if (typeof updateAppointment === "function") {
-        await updateAppointment(id, { status: newStatus });
-        setAppointments((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-        );
-      }
-    } catch (err) {
-      console.error("Failed to alter processing status attribute flag:", err);
-    }
-  };
-
   const handleDeleteDoctor = async (id) => {
     if (window.confirm("Purge selected clinician credential logs from storage?")) {
       try {
@@ -177,6 +176,19 @@ function Dashboard() {
       } catch (err) {
         console.error("Error running practitioner deletion command routine:", err);
       }
+    }
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case "Completed":
+      case "Accept":
+        return "bg-green-50 text-green-700 border border-green-100";
+      case "Cancelled":
+      case "Rejected":
+        return "bg-red-50 text-red-600 border border-red-100";
+      default:
+        return "bg-yellow-50 text-yellow-700 border border-yellow-100";
     }
   };
 
@@ -233,7 +245,7 @@ function Dashboard() {
         })}
       </div>
 
-      {/* MID SECTION: CHART + APPOINTMENTS */}
+      {/* MID SECTION: CHART + APPOINTMENTS MONITORING FEED */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         
         {/* PATIENTS CHART CARD */}
@@ -270,52 +282,43 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* APPOINTMENTS CARD */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between w-full overflow-hidden">
+        {/* READ ONLY APPOINTMENTS MONITORING FEED CARD */}
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between w-full overflow-hidden h-full min-h-[380px]">
           <div className="w-full relative">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-gray-800 text-base sm:text-lg">Latest Appointments</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-gray-800 text-base sm:text-lg flex items-center gap-2">
+                <CalendarDays className="text-purple-600" size={18} /> Schedule Monitor
+              </h3>
             </div>
+            <p className="text-xs text-gray-400 mb-4">Read-only live telemetry from clinical workstations.</p>
 
             <div className="flex justify-between text-[11px] font-semibold text-gray-400 border-b border-gray-100 pb-2 mb-3 px-1">
-              <span>Patient Name</span>
-              <span>Schedule Frame</span>
+              <span>Patient & Assigned Practitioner</span>
+              <span>Status State</span>
             </div>
 
-            <div className="space-y-3.5 max-h-[250px] overflow-y-auto pr-1">
+            <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
               {appointments.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">No booking appointments found.</p>
+                <p className="text-xs text-gray-400 text-center py-12">No scheduled appointments found.</p>
               ) : (
                 appointments.map((item, index) => (
-                  <div key={item.id || index} className="flex justify-between items-center text-sm px-1 gap-2">
+                  <div key={item.id || index} className="flex justify-between items-center text-sm px-1 gap-2 border-b border-gray-50 pb-2 last:border-none">
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-semibold text-gray-800 truncate">
+                      <h4 className="font-semibold text-gray-800 truncate text-xs sm:text-sm">
                         {item.patientName || item.patient || item.name || "Anonymous Patient"}
                       </h4>
-                      <div className="flex gap-2 mt-1">
-                        <button 
-                          onClick={() => handleUpdateStatus(item.id, "Accept")}
-                          className="text-[10px] text-emerald-600 hover:underline font-medium"
-                        >
-                          Accept
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateStatus(item.id, "Rejected")}
-                          className="text-[10px] text-rose-500 hover:underline font-medium"
-                        >
-                          Reject
-                        </button>
-                      </div>
+                      <p className="text-[10px] text-gray-400 truncate mt-0.5 font-medium">
+                        {item.doctorName || item.doctor || "Unassigned Staff"}
+                      </p>
                     </div>
+                    
                     <div className="flex items-center gap-2 shrink-0 text-right">
-                      <span className="text-[11px] text-gray-400 font-mono">
-                        {item.resolvedDateObject ? item.resolvedDateObject.toLocaleDateString(undefined, {month: '2-digit', day: '2-digit'}) : "N/A"}
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        {item.appointmentDate || (item.resolvedDateObject ? item.resolvedDateObject.toLocaleDateString(undefined, {month: '2-digit', day: '2-digit'}) : "—")}
                       </span>
-                      <span className={`text-[10px] px-2 py-0.5 font-bold rounded-md w-16 text-center ${
-                        item.status === "Accept" ? "bg-green-50 text-green-600" :
-                        item.status === "Rejected" ? "bg-red-50 text-red-500" : "bg-amber-50 text-amber-600"
-                      }`}>
-                        {item.status || "Pending"}
+                      <span className={`text-[10px] px-2 py-1 font-bold rounded-lg w-20 text-center shadow-sm ${getStatusBadgeStyle(item.normalizedStatus)}`}>
+                        {item.normalizedStatus === "Accept" ? "Completed" : 
+                         item.normalizedStatus === "Rejected" ? "Cancelled" : item.normalizedStatus}
                       </span>
                     </div>
                   </div>
@@ -324,6 +327,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
+
       </div>
 
       {/* RECENT DOCTORS TABLE */}
@@ -346,7 +350,6 @@ function Dashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-600">
                 {doctors.map((doctor) => {
-                  // Advanced clean status evaluation logic block mapping
                   const rawStatus = typeof doctor.status === 'string' ? doctor.status.toLowerCase() : '';
                   const isAvailable = 
                     doctor.status === true || 
@@ -358,9 +361,7 @@ function Dashboard() {
                   return (
                     <tr key={doctor.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-3 pl-4 font-mono text-xs text-gray-400">...{String(doctor.id).substring(0, 5)}</td>
-                      <td className="p-3 font-semibold text-gray-800">
-                        {doctor.computedName}
-                      </td>
+                      <td className="p-3 font-semibold text-gray-800">{doctor.computedName}</td>
                       <td className="p-3 font-mono text-xs">{doctor.mobile || doctor.phone || "N/A"}</td>
                       <td className="p-3">
                         <span className="text-xs px-2 py-0.5 bg-gray-100 rounded font-medium text-gray-600">
