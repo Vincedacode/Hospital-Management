@@ -11,6 +11,21 @@ import { db } from "../firebase/firebase";
 
 const appointmentCollection = collection(db, "appointments");
 
+// In your appointmentService.js
+export const getPatientAppointments = async (patientId) => {
+  try {
+    const q = query(appointmentCollection, where("patientId", "==", patientId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching patient appointments:", error);
+    throw error;
+  }
+};
+
 /* CREATE */
 export const createAppointment = async (appointmentData) => {
   try {

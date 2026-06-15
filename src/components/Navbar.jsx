@@ -41,11 +41,7 @@ const Navbar = ({ setOpen }) => {
 
         {/* USER NAME */}
         <div className="flex items-center gap-2">
-          <LogOut size={16} className="text-gray-700" />
-
-          <span className="font-medium text-gray-700 text-sm lg:text-base">
-            Madhusha
-          </span>
+     
         </div>
       </div>
 
