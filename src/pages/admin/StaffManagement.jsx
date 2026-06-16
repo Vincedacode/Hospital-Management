@@ -139,7 +139,7 @@ function StaffManagement() {
                 <option value="">Role</option>
                 <option value="Doctor">Doctor</option>
                 <option value="Nurse">Nurse</option>
-                <option value="Admin">Admin</option>
+              
               </select>
 
               <select name="gender" value={formData.gender} onChange={handleInputChange} disabled={loading} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-100">

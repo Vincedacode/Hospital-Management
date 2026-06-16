@@ -305,7 +305,7 @@ const handleSearch = () => {
                 onBlur={(e) => (e.target.type = "text")}
                 className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:border-indigo-500 placeholder-gray-400 transition-colors text-left"
               />
-              <Calendar className="absolute right-4 top-3.5 text-gray-400 pointer-events-none" size={20} />
+             
             </div>
 
             <input 
@@ -340,7 +340,7 @@ const handleSearch = () => {
                 onBlur={(e) => (e.target.type = "text")}
                 className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:border-indigo-500 placeholder-gray-400 transition-colors text-left"
               />
-              <Clock className="absolute right-4 top-3.5 text-gray-400 pointer-events-none" size={20} />
+              
             </div>
 
             <div className="flex rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors">

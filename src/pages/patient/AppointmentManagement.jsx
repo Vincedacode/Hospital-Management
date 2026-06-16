@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { CalendarDays, Clock3, Search, Plus, X, User, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { 
+  CalendarDays, 
+  Clock3, 
+  Search, 
+  Plus, 
+  X, 
+  User, 
+  CheckCircle2, 
+  AlertCircle, 
+  XCircle, 
+  Loader2, 
+  MapPin, 
+  FileText,
+  Sparkles,
+  ChevronRight
+} from "lucide-react";
 import { getAppointments, createAppointment } from "../../services/appointmentService";
 import { getStaff } from "../../services/staffService";
 
@@ -58,7 +73,6 @@ function AppointmentManagement() {
       };
       
       await createAppointment(payload);
-      alert("Appointment requested successfully!");
       setIsBooking(false);
       setNewAppt({ assignedDoctorId: "", appointmentDate: "", appointmentTime: "", address: "" });
       fetchData();
@@ -71,101 +85,259 @@ function AppointmentManagement() {
     appt.doctorName?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getStatusBadge = (status) => {
-  switch (status?.toLowerCase()) {
-    case "confirmed":
-      return "bg-green-100 text-green-700";
-    case "cancelled":
-      return "bg-red-100 text-red-700";
-    case "completed":
-      return "bg-blue-100 text-blue-700";
-    case "pending":
-    default:
-      return "bg-yellow-100 text-yellow-700";
+  const getStatusDetails = (status) => {
+    switch (status?.toLowerCase()) {
+      case "confirmed":
+        return {
+          bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+          icon: <CheckCircle2 size={14} className="text-emerald-600" />
+        };
+      case "cancelled":
+        return {
+          bg: "bg-rose-50 text-rose-700 border-rose-200/60",
+          icon: <XCircle size={14} className="text-rose-600" />
+        };
+      case "completed":
+        return {
+          bg: "bg-blue-50 text-blue-700 border-blue-200/60",
+          icon: <CheckCircle2 size={14} className="text-blue-600" />
+        };
+      case "pending":
+      default:
+        return {
+          bg: "bg-amber-50 text-amber-700 border-amber-200/60",
+          icon: <AlertCircle size={14} className="text-amber-600" />
+        };
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 w-16 h-16 bg-indigo-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
+          <Loader2 className="relative animate-spin text-indigo-600 z-10" size={44} />
+        </div>
+        <p className="text-slate-500 text-sm font-medium tracking-wide animate-pulse">Syncing schedules...</p>
+      </div>
+    );
   }
-};
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="bg-white rounded-2xl p-6 shadow-sm border flex justify-between items-center">
-        <h1 className="text-2xl font-bold">My Appointments</h1>
-        <button 
-          onClick={() => setIsBooking(true)}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-medium flex items-center gap-2 hover:bg-indigo-700"
-        >
-          <Plus size={18} /> Book Appointment
-        </button>
+    <div className="space-y-8 p-4 md:p-8 bg-slate-50/40 min-h-screen">
+      
+      {/* HEADER ACTION BANNER */}
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 p-6 md:p-8 text-white shadow-xl shadow-indigo-600/10 border border-white/10">
+        <div className="absolute -right-6 -bottom-10 opacity-10 pointer-events-none">
+          <CalendarDays size={240} />
+        </div>
+        
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 mb-3 text-xs font-semibold tracking-wider uppercase text-indigo-100">
+              <Sparkles size={12} className="text-amber-300" />
+              <span>Real-time Scheduling</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">My Appointments</h1>
+            <p className="mt-1.5 text-sm text-indigo-100/80 font-light max-w-md">
+              Book new consultations, monitor approvals, and review past visits cleanly in one secure pane.
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => setIsBooking(true)}
+            className="self-start sm:self-center bg-white text-indigo-700 hover:text-white hover:bg-white/10 hover:backdrop-blur-md border border-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2.5 transition-all duration-300 active:scale-95 shadow-lg shadow-black/10 group"
+          >
+            <Plus size={18} className="transform group-hover:rotate-90 transition-transform duration-300" /> 
+            <span>Book New Slot</span>
+          </button>
+        </div>
       </div>
 
-      {/* Booking Modal */}
-      {isBooking && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold">Request New Appointment</h2>
-              <X className="cursor-pointer" onClick={() => setIsBooking(false)}/>
-            </div>
-            <form onSubmit={handleBookSubmit} className="space-y-4">
-              <select required className="w-full border rounded-xl p-3" onChange={(e) => setNewAppt({...newAppt, assignedDoctorId: e.target.value})}>
-                <option value="">Select a Doctor</option>
-                {doctors.map(doc => <option key={doc.id} value={doc.id}>Dr. {doc.firstName} {doc.lastName}</option>)}
-              </select>
-              <div className="grid grid-cols-2 gap-4">
-                <input required type="date" className="border rounded-xl p-3" onChange={(e) => setNewAppt({...newAppt, appointmentDate: e.target.value})}/>
-                <input required type="time" className="border rounded-xl p-3" onChange={(e) => setNewAppt({...newAppt, appointmentTime: e.target.value})}/>
-              </div>
-              <textarea placeholder="Notes" className="w-full border rounded-xl p-3" onChange={(e) => setNewAppt({...newAppt, address: e.target.value})}/>
-              <button type="submit" className="bg-indigo-600 text-white w-full py-3 rounded-xl font-bold">Submit Request</button>
-            </form>
+      {/* FILTER SEARCH BAR */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-md shadow-slate-200/30 flex items-center gap-3">
+        <Search size={20} className="text-slate-400 ml-2" />
+        <input 
+          type="text" 
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Filter appointments by physician name..." 
+          className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm focus:outline-none font-medium"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* APPOINTMENTS DATA WRAPPER */}
+      {filteredAppointments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+          <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-500 mb-4">
+            <CalendarDays size={36} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">No scheduled visits matching records</h3>
+          <p className="text-slate-400 text-sm mt-1 max-w-xs">You don't have any appointments currently running under this metric filter.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] border-collapse text-left">
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-4.5">Medical Staff</th>
+                  <th className="px-6 py-4.5">Schedule Date</th>
+                  <th className="px-6 py-4.5">Target Time</th>
+                  <th className="px-6 py-4.5">Status Label</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                {filteredAppointments.map((appt) => {
+                  const statusDetails = getStatusDetails(appt.status);
+                  return (
+                    <tr key={appt.id} className="group hover:bg-slate-50/40 transition-colors duration-200">
+                      <td className="px-6 py-4.5 font-semibold text-slate-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                            {appt.doctorName ? appt.doctorName.replace("Dr. ", "").charAt(0) : "D"}
+                          </div>
+                          <span className="group-hover:text-indigo-600 transition-colors duration-200">
+                            {appt.doctorName || "Assigned Specialist"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4.5">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg">
+                          <CalendarDays size={13} className="text-slate-400" />
+                          {appt.appointmentDate}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4.5">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg">
+                          <Clock3 size={13} className="text-slate-400" />
+                          {appt.appointmentTime}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4.5">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${statusDetails.bg}`}>
+                          {statusDetails.icon}
+                          {appt.status || "Pending"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 text-left">
-            <tr>
-              <th className="px-6 py-4">Doctor</th>
-              <th className="px-6 py-4">Date</th>
-              <th className="px-6 py-4">Time</th>
-              <th className="px-6 py-4">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAppointments.map((appt) => (
-              <tr key={appt.id} className="border-t">
-                <td className="px-6 py-4">{appt.doctorName}</td>
-                <td className="px-6 py-4">{appt.appointmentDate}</td>
-                <td className="px-6 py-4">{appt.appointmentTime}</td>
-<td className="px-6 py-4">
-  <span
-    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-      appt.status
-    )}`}
-  >
-    {appt.status?.toLowerCase() === "confirmed" && (
-      <CheckCircle2 size={14} />
-    )}
-    {appt.status?.toLowerCase() === "cancelled" && (
-      <XCircle size={14} />
-    )}
-    {appt.status?.toLowerCase() === "completed" && (
-      <CheckCircle2 size={14} />
-    )}
-    {(!appt.status ||
-      appt.status?.toLowerCase() === "pending") && (
-      <AlertCircle size={14} />
-    )}
+      {/* BOOKING INTERACTIVE SLIDE-OVER / MODAL GLASSMOPHISM */}
+      {isBooking && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col transform animate-scale-up">
+            
+            {/* Modal Head */}
+            <div className="bg-slate-50 px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <CalendarDays size={18} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">Request Appointment</h2>
+                  <p className="text-xs text-slate-400">Slots are subject to practitioner validation</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsBooking(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-    {appt.status || "Pending"}
-  </span>
-</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            {/* Form Body */}
+            <form onSubmit={handleBookSubmit} className="p-6 space-y-5">
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Medical Professional</label>
+                <div className="relative">
+                  <select 
+                    required 
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 appearance-none cursor-pointer"
+                    onChange={(e) => setNewAppt({...newAppt, assignedDoctorId: e.target.value})}
+                  >
+                    <option value="">Choose a Doctor</option>
+                    {doctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        Dr. {doc.firstName} {doc.lastName}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                    <User size={16} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Date</label>
+                  <input 
+                    required 
+                    type="date" 
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
+                    onChange={(e) => setNewAppt({...newAppt, appointmentDate: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Time</label>
+                  <input 
+                    required 
+                    type="time" 
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
+                    onChange={(e) => setNewAppt({...newAppt, appointmentTime: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Appointment Notes / Symptoms</label>
+                <div className="relative">
+                  <textarea 
+                    placeholder="Briefly describe the purpose of your checkup or any persistent symptoms..." 
+                    rows={3}
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none" 
+                    onChange={(e) => setNewAppt({...newAppt, address: e.target.value})}
+                  />
+                  <div className="absolute right-4 bottom-4 text-slate-300">
+                    <FileText size={16} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <button 
+                  type="button"
+                  onClick={() => setIsBooking(false)}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-bold transition shadow-md shadow-indigo-600/10"
+                >
+                  Submit Schedule Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
