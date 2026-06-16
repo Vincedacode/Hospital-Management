@@ -1,5 +1,6 @@
-import { db } from "../firebase/firebase";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { initializeApp, getApps } from "firebase/app";
+import app, { db } from "../firebase/firebase";
 import { 
   collection, 
   doc, 
@@ -10,28 +11,37 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 
+const secondaryApp =
+  getApps().find((app) => app.name === "patientRegistration") ||
+  initializeApp(app.options, "patientRegistration");
+
+const secondaryAuth = getAuth(secondaryApp);
+
 // CREATE PATIENT (Auth + Database)
 export const createPatient = async (data) => {
-  const auth = getAuth();
-  
-  // 1. Create user in Firebase Authentication
-  const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+  const userCredential = await createUserWithEmailAndPassword(
+    secondaryAuth,
+    data.email,
+    data.password
+  );
+
   const uid = userCredential.user.uid;
 
-  // 2. Prepare data without sensitive password
   const { password, confirmPassword, ...patientData } = data;
 
-  // 3. Create document in Firestore using the Auth UID
   const patientRef = doc(db, "patients", uid);
+
   await setDoc(patientRef, {
     ...patientData,
     role: "patient",
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
   });
 
-  return { id: uid, ...patientData };
+  return {
+    id: uid,
+    ...patientData,
+  };
 };
-
 // GET ALL PATIENTS
 export const getPatients = async () => {
   const snapshot = await getDocs(collection(db, "patients"));

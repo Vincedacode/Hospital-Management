@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   Clock3,
   XCircle,
+  Loader2,
+  Sparkles,
+  DollarSign
 } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
@@ -52,16 +55,16 @@ function InvoiceManagement() {
       const invoiceRef = doc(db, "invoices", invoiceId);
       await updateDoc(invoiceRef, {
         paymentStatus: newStatus.toLowerCase(),
-updatedAt: new Date(),
+        updatedAt: new Date(),
       });
 
-setInvoices((prev) =>
-  prev.map((inv) =>
-    inv.id === invoiceId
-      ? { ...inv, paymentStatus: newStatus.toLowerCase() }
-      : inv
-  )
-);
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoiceId
+            ? { ...inv, paymentStatus: newStatus.toLowerCase() }
+            : inv
+        )
+      );
 
       alert(`Bill ${action}ed successfully!`);
     } catch (error) {
@@ -81,31 +84,31 @@ setInvoices((prev) =>
     switch (s) {
       case "paid":
         return (
-          <span className="flex items-center gap-1 text-green-700 bg-green-100 px-3 py-1 rounded-full text-xs font-semibold w-fit">
-            <CheckCircle2 size={14} /> Paid
+          <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            <CheckCircle2 size={13} /> Paid
           </span>
         );
       case "rejected":
         return (
-          <span className="flex items-center gap-1 text-red-700 bg-red-100 px-3 py-1 rounded-full text-xs font-semibold w-fit">
-            <XCircle size={14} /> Rejected
+          <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 border border-rose-200/60 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            <XCircle size={13} /> Rejected
           </span>
         );
       case "pending":
         return (
-          <span className="flex items-center gap-1 text-yellow-700 bg-yellow-100 px-3 py-1 rounded-full text-xs font-semibold w-fit">
-            <Clock3 size={14} /> Pending
+          <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200/60 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            <Clock3 size={13} /> Pending
           </span>
         );
       case "overdue":
         return (
-          <span className="flex items-center gap-1 text-red-700 bg-red-100 px-3 py-1 rounded-full text-xs font-semibold w-fit">
-            <AlertCircle size={14} /> Overdue
+          <span className="inline-flex items-center gap-1.5 text-red-700 bg-red-50 border border-red-200/60 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider animate-pulse">
+            <AlertCircle size={13} /> Overdue
           </span>
         );
       default:
         return (
-          <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-semibold">
+          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
             {status || "Pending"}
           </span>
         );
@@ -113,75 +116,118 @@ setInvoices((prev) =>
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-purple-100">
-            <FileText className="text-purple-600" size={24} />
-          </div>
+    <div className="space-y-8 p-4 md:p-8 bg-slate-50/40 min-h-screen">
+      
+      {/* HEADER HERO BANNER */}
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 p-6 md:p-8 text-white shadow-xl shadow-purple-600/10 border border-white/10">
+        <div className="absolute -right-6 -bottom-12 opacity-10 pointer-events-none">
+          <FileText size={240} />
+        </div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Invoices</h1>
-            <p className="text-gray-500 mt-1">View your medical bills and payment history</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 mb-3 text-xs font-semibold tracking-wider uppercase text-purple-100">
+              <Sparkles size={12} className="text-amber-300" />
+              <span>Financial Overview</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">Billing & Invoices</h1>
+            <p className="mt-1.5 text-sm text-purple-100/80 font-light max-w-md">
+              Review breakdowns of your current treatments, track historical itemizations, and settle outstanding medical tabs quickly.
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="relative max-w-md">
-          <Search size={18} className="absolute left-4 top-3.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by Invoice ID or Treatment..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-        </div>
+      {/* FILTER SEARCH BAR */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-md shadow-slate-200/30 flex items-center gap-3 transition-all focus-within:border-purple-400">
+        <Search size={20} className="text-slate-400 ml-2" />
+        <input
+          type="text"
+          placeholder="Search by Invoice reference token ID or treatment nature..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm focus:outline-none font-medium"
+        />
+        {search && (
+          <button 
+            onClick={() => setSearch("")} 
+            className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+          >
+            <XCircle size={16} />
+          </button>
+        )}
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+      {/* TABLE SECTION WRAPPER */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-fuchsia-500"></div>
+        
         {loading ? (
-          <div className="p-10 text-center text-gray-500">Loading your invoices...</div>
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 w-16 h-16 bg-purple-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
+              <Loader2 className="relative animate-spin text-purple-600 z-10" size={40} />
+            </div>
+            <p className="text-slate-500 text-sm font-medium tracking-wide animate-pulse">Compiling billing ledgers...</p>
+          </div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="p-10 text-center text-gray-500">No invoices found.</div>
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="p-4 bg-purple-50 rounded-2xl text-purple-500 mb-4">
+              <DollarSign size={36} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">No statement matching parameters</h3>
+            <p className="text-slate-400 text-sm mt-1 max-w-xs">You have no recorded invoices loaded under this filter query currently.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 text-left text-sm text-gray-600">
-                <tr>
-                  <th className="px-6 py-4">Invoice ID</th>
-                  <th className="px-6 py-4">Treatment</th>
-                  <th className="px-6 py-4">Amount</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Actions</th>
+            <table className="w-full min-w-[750px] border-collapse text-left">
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-4.5">Invoice ID</th>
+                  <th className="px-6 py-4.5">Treatment / Care Scope</th>
+                  <th className="px-6 py-4.5">Gross Amount</th>
+                  <th className="px-6 py-4.5">Status Label</th>
+                  <th className="px-6 py-4.5 text-right">Actions Pane</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {filteredInvoices.map((inv) => (
-                  <tr key={inv.id} className="border-t hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">{inv.id?.substring(0, 8)}...</td>
-                    <td className="px-6 py-4">{inv.treatment}</td>
-                    <td className="px-6 py-4 font-semibold">{inv.amount}</td>
-                    <td className="px-6 py-4">{getStatus(inv.paymentStatus)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-
-                      
-                       {(inv.paymentStatus || "Pending").toLowerCase() === "pending" && (
+                  <tr key={inv.id} className="group hover:bg-slate-50/40 transition-colors duration-200">
+                    <td className="px-6 py-4.5">
+                      <span className="font-mono text-xs font-semibold text-purple-600 bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-lg">
+                        #{inv.id?.substring(0, 8).toUpperCase()}...
+                      </span>
+                    </td>
+                    <td className="px-6 py-4.5 font-bold text-slate-800">
+                      {inv.treatment}
+                    </td>
+                    <td className="px-6 py-4.5 font-black text-slate-900 text-base">
+                      {inv.amount}
+                    </td>
+                    <td className="px-6 py-4.5">
+                      {getStatus(inv.paymentStatus)}
+                    </td>
+                    <td className="px-6 py-4.5 text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        {(inv.paymentStatus || "Pending").toLowerCase() === "pending" ? (
                           <>
                             <button
                               onClick={() => handleUpdateInvoiceStatus(inv.id, "paid")}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition duration-200 active:scale-95 shadow-sm shadow-emerald-200"
                             >
-                              Accept
+                              Accept Bill
                             </button>
                             <button
                               onClick={() => handleUpdateInvoiceStatus(inv.id, "rejected")}
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition"
+                              className="bg-slate-100 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-200 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs transition duration-200 active:scale-95"
                             >
                               Reject
                             </button>
                           </>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic font-medium pr-2 select-none">
+                            Archived
+                          </span>
                         )}
                       </div>
                     </td>

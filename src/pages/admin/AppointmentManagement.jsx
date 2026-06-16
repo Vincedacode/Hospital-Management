@@ -343,7 +343,7 @@ function AppointmentManagement() {
                 required
                 className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            
             </div>
 
             <div className="relative">
@@ -355,7 +355,7 @@ function AppointmentManagement() {
                 required
                 className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <Clock3 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            
             </div>
 
             {/* Value binds to doc.id instead of plain text names */}

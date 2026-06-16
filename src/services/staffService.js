@@ -6,31 +6,44 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { db } from "../firebase/firebase"; 
+import {
+  getAuth,
+  createUserWithEmailAndPassword
+} from "firebase/auth";
+
+import {
+  initializeApp,
+  getApps
+} from "firebase/app";
+
+import app, { db } from "../firebase/firebase";
+
+const secondaryApp =
+  getApps().find(app => app.name === "staffRegistration") ||
+  initializeApp(app.options, "staffRegistration");
+
+const secondaryAuth = getAuth(secondaryApp);
 
 const staffCollection = collection(db, "staff");
 
 // Create Staff (Handles both Authentication AND Firestore)
 export const createStaff = async (staffData) => {
-  const auth = getAuth();
   try {
-    // 1. Create user inside Firebase Authentication engine
-    const userCredential = await createUserWithEmailAndPassword(
-      auth, 
-      staffData.email, 
-      staffData.password
-    );
+    const userCredential =
+      await createUserWithEmailAndPassword(
+        secondaryAuth,
+        staffData.email,
+        staffData.password
+      );
+
     const user = userCredential.user;
 
-    // 2. Separate password data out so it's never saved as plain text in Firestore
     const { password, ...firestoreData } = staffData;
 
-    // 3. Save the profile record down to Firestore using the Auth UID as the Doc ID
     await setDoc(doc(db, "staff", user.uid), {
       uid: user.uid,
       ...firestoreData,
-      role: firestoreData.role || "staff", // Defaults fallback to staff role
+      role: firestoreData.role || "staff",
       createdAt: new Date(),
     });
 
