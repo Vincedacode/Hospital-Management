@@ -1,3 +1,9 @@
+/**
+ * @file MedicineManagement.jsx
+ * @description This component provides a comprehensive interface for managing the hospital's medicine inventory. It allows administrators to add, update, delete, and search for medicines, as well as generate PDF reports of the current inventory. The component also visually distinguishes between active and expired medicines.
+ * @collaborator chineduchiamaka742-oss 
+ * */ 
+
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -304,7 +310,7 @@ const MedicineManagement = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 font-sans antialiased text-gray-800 space-y-6 relative animate-fadeIn">
-      
+
      
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300 animate-fadeIn">
