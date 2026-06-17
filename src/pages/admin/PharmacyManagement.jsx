@@ -138,9 +138,9 @@ export default function PharmacyManagement() {
   // Chart B: Calculates quantitative metrics of stock segments matching statuses
   const aggregateStockStatusDistribution = (medicines) => {
     if (!medicines.length) return [
-      { name: "Optimal Stock", value: 14, color: "#10B981" },
-      { name: "Low Inventory Warning", value: 5, color: "#F59E0B" },
-      { name: "Depleted / Out of Stock", value: 2, color: "#EF4444" }
+      { name: "Optimal Stocks", value: 14, color: "#10B981" },
+      { name: "Low Inventory Warnings", value: 5, color: "#F59E0B" },
+      { name: "Depleted / Out of Stocks", value: 2, color: "#EF4444" }
     ];
 
     let optimal = 0;
