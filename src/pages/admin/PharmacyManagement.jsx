@@ -1,3 +1,10 @@
+/**
+ * @file PharmacyManagement.jsx
+ * @description Clinical Pharmacy Dashboard Overview & Real-time Auditing Engine.
+ * @collaborator David-Osas-bot <https://github.com/David-Osas-bot>
+ * @version 1.1.0
+ */
+
 import { useState, useEffect } from "react";
 
 // ── Firestore CRUD Integrations ──────────────────────────────────────────────
