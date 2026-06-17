@@ -13,7 +13,7 @@ import {
   Loader2
 } from 'lucide-react';
 
-// Import your Firestore functions
+
 import { 
   createMedicine, 
   getMedicines, 
@@ -59,7 +59,7 @@ const MedicineManagement = () => {
     fetchMedicines();
   }, []);
 
-  // --- Form Handlers ---
+  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -305,7 +305,7 @@ const MedicineManagement = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-6 font-sans antialiased text-gray-800 space-y-6 relative animate-fadeIn">
       
-      {/* Global Success Micro-Interaction Notification Overlay */}
+     
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300 animate-fadeIn">
           <div className="bg-white p-8 rounded-2xl shadow-2xl border border-emerald-100 flex flex-col items-center max-w-sm mx-auto text-center transform scale-100 transition-transform duration-300 animate-scaleUp">
@@ -318,7 +318,7 @@ const MedicineManagement = () => {
         </div>
       )}
 
-      {/* Top Header Panel */}
+      
       <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center animate-fadeIn">
         <h1 className="text-xl font-bold tracking-wide text-gray-900">Medicine Management</h1>
         {loading && <Loader2 className="animate-spin text-purple-600 shrink-0" size={20} />}
