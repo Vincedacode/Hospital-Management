@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 // ── Firestore CRUD Integrations ──────────────────────────────────────────────
-import { getAppointments } from "../../services/appointmentService"; // Adjust paths to match your project tree
+import { getAppointments } from "../../services/appointmentService"; 
 import { getInvoices } from "../../services/invoiceService";
 import { getMedicines } from "../../services/medicineService";
 import { getPatients } from "../../services/patientService";
@@ -9,7 +9,7 @@ import { getStaff } from "../../services/staffService";
 
 // ── Secondary Management Views (Imported for Navigation Routing) ─────────────
 import InvoiceManagement from "./InvoiceManagement";
- import MedicineManagement from "./MedicineManagement";
+import MedicineManagement from "./MedicineManagement";
 
 // ── Recharts ──────────────────────────────────────────────────────────────────
 import {
@@ -23,8 +23,8 @@ const DashboardTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{
-        background: "#222", color: "#fff", padding: "4px 10px",
-        borderRadius: 6, fontSize: 12, fontWeight: 700,
+        background: "#222", color: "#fff", padding: "6px 10px",
+        borderRadius: 6, fontSize: 12, fontWeight: 700, boxShadow: "0 2px 5px rgba(0,0,0,0.2)"
       }}>
         {payload[0].value.toLocaleString()}
       </div>
@@ -46,17 +46,12 @@ export default function PharmacyManagement() {
   // Navigation & Page State Switcher
   const [activePage, setActivePage] = useState("Dashboard");
 
-  // Telemetry Filters
-  const [purchasePeriod, setPurchasePeriod] = useState("7 days");
-  const [sellsPeriod, setSellsPeriod] = useState("All");
-  const [stockPeriod, setStockPeriod] = useState("7 days");
-
   // Operational Database Hook States
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState({ customersCount: 0, medicinesCount: 0, staffCount: 0 });
+  const [metrics, setMetrics] = useState({ customersCount: 0, medicinesCount: 0, suppliersCount: 0 });
   const [medicinesList, setMedicinesList] = useState([]);
-  const [purchaseTelemetry, setPurchaseTelemetry] = useState([]);
-  const [sellsTelemetry, setSellsTelemetry] = useState([]);
+  const [financialTelemetry, setFinancialTelemetry] = useState([]);
+  const [distributionTelemetry, setDistributionTelemetry] = useState([]);
   const [stockTelemetry, setStockTelemetry] = useState([]);
 
   // Fetch Firestore Collections on Mount
@@ -72,30 +67,41 @@ export default function PharmacyManagement() {
           getStaff()
         ]);
 
+        // Extract and aggregate unique supplier names securely from the active medicines inventory array
+        const uniqueSuppliers = new Set(
+          medicines
+            .map(med => med.supplier?.trim())
+            .filter(supplierName => supplierName && supplierName.toLowerCase() !== "n/a" && supplierName !== "—")
+        );
+
         // 1. Process Aggregated Total Metrics Cards
         setMetrics({
-          customersCount: patients.length || new Set(invoices.map(i => i.patientId)).size,
+          customersCount: patients.length || new Set(invoices.map(i => i.patientName)).size,
           medicinesCount: medicines.length,
-          staffCount: staff.length
+          suppliersCount: uniqueSuppliers.size || 0
         });
 
         // 2. Hydrate Medicine Inventory List
         setMedicinesList(medicines);
 
-        // 3. Map Purchase Telemetry Data (Area Chart)
-        const compiledPurchases = aggregatePurchaseData(invoices);
-        setPurchaseTelemetry(compiledPurchases);
+        // 3. Map Financial Investment Valuation Data (Area Chart)
+        const compiledFinancials = aggregateFinancialData(medicines);
+        setFinancialTelemetry(compiledFinancials);
 
-        // 4. Map Sells Telemetry Data (Pie Chart)
-        const compiledSells = aggregateSellsData(invoices);
-        setSellsTelemetry(compiledSells);
+        // 4. Map Stock Status Breakdown Proportions (Pie Chart)
+        const compiledDistribution = aggregateStockStatusDistribution(medicines);
+        setDistributionTelemetry(compiledDistribution);
 
-        // 5. Map Stock Volume Level Levels (Bar Chart)
-        const compiledStock = medicines.map(med => ({
-          name: med.name || med.drugName || "Unknown",
-          value: Number(med.qty || med.quantity || 0),
-          color: Number(med.qty || med.quantity || 0) === 0 ? "#FF4500" : "#00BFFF"
-        })).slice(0, 6); // Keep viewport readable
+        // 5. Map Dynamic Active Stock Quantities (Bar Chart Matrix)
+        const compiledStock = medicines.map(med => {
+          const quantity = Number(med.qty || 0);
+          return {
+            name: med.name || "Unknown Drug",
+            value: quantity,
+            // Low stock thresholds turn orange/red automatically
+            color: quantity === 0 ? "#EF4444" : quantity < 15 ? "#F59E0B" : "#6366F1"
+          };
+        }).slice(0, 8); // Slice viewport scale boundaries for optimized readability
         
         setStockTelemetry(compiledStock.length ? compiledStock : defaultStockFallback);
 
@@ -109,47 +115,64 @@ export default function PharmacyManagement() {
     loadDashboardData();
   }, []);
 
-  // ── Helper Data Aggregators for Graphs ──────────────────────────────────
-  const aggregatePurchaseData = (invoices) => {
-    if (!invoices.length) return [
-      { day: "Mon", value: 1800 }, { day: "Tue", value: 2212 }, { day: "Wed", value: 1600 },
-      { day: "Thu", value: 2000 }, { day: "Fri", value: 1400 }, { day: "Sat", value: 1700 }, { day: "Sun", value: 1500 }
+  // ── Helper Data Aggregators Driven Exclusively By Medicine Database ───────
+  
+  // Chart A: Calculates capital locked up based on (Unit Price * Quantity) per medicine
+  const aggregateFinancialData = (medicines) => {
+    if (!medicines.length) return [
+      { name: "Amoxicillin", value: 45000 }, { name: "Paracetamol", value: 12000 }, 
+      { name: "Metformin", value: 68000 }, { name: "Lipitor", value: 110000 }, 
+      { name: "Omeprazole", value: 35000 }, { name: "Azithromycin", value: 92000 }
     ];
-    
-    const contextMap = {};
-    invoices.forEach(inv => {
-      const dateKey = inv.createdAt?.toDate ? inv.createdAt.toDate().toLocaleDateString('en-US', { weekday: 'short' }) : 'Day';
-      contextMap[dateKey] = (contextMap[dateKey] || 0) + Number(inv.totalAmount || inv.price || 0);
-    });
-    return Object.keys(contextMap).map(key => ({ day: key, value: contextMap[key] }));
+
+    return medicines.map(med => {
+      const price = Number(med.price || 0);
+      const qty = Number(med.qty || 0);
+      return {
+        name: med.name || "Unknown",
+        value: price * qty
+      };
+    }).slice(0, 7);
   };
 
-  const aggregateSellsData = (invoices) => {
-    if (!invoices.length) return [
-      { name: "Antibiotics", value: 35, color: "#FFD700" },
-      { name: "Analgesics", value: 25, color: "#1E90FF" },
-      { name: "Vitamins", value: 20, color: "#FF6347" },
-      { name: "Antivirals", value: 20, color: "#32CD32" }
+  // Chart B: Calculates quantitative metrics of stock segments matching statuses
+  const aggregateStockStatusDistribution = (medicines) => {
+    if (!medicines.length) return [
+      { name: "Optimal Stock", value: 14, color: "#10B981" },
+      { name: "Low Inventory Warning", value: 5, color: "#F59E0B" },
+      { name: "Depleted / Out of Stock", value: 2, color: "#EF4444" }
     ];
 
-    const distribution = {};
-    invoices.forEach(inv => {
-      const category = inv.category || "General Medicine";
-      distribution[category] = (distribution[category] || 0) + 1;
+    let optimal = 0;
+    let low = 0;
+    let depleted = 0;
+    const today = new Date();
+
+    medicines.forEach(med => {
+      const qty = Number(med.qty || 0);
+      const isExpired = med.expire ? new Date(med.expire) < today : false;
+
+      if (qty === 0 || isExpired) {
+        depleted++;
+      } else if (qty < 15) {
+        low++;
+      } else {
+        optimal++;
+      }
     });
 
-    const colors = ["#FFD700", "#1E90FF", "#FF6347", "#32CD32", "#FF4500"];
-    return Object.keys(distribution).map((key, idx) => ({
-      name: key,
-      value: distribution[key],
-      color: colors[idx % colors.length]
-    }));
+    return [
+      { name: "Optimal Stock (>15 units)", value: optimal, color: "#10B981" },
+      { name: "Low Inventory Warning", value: low, color: "#F59E0B" },
+      { name: "Depleted / Expired Stock", value: depleted, color: "#EF4444" }
+    ];
   };
 
   const defaultStockFallback = [
-    { name: "Vitamin C", value: 150, color: "#00BFFF" },
-    { name: "Paracetamol", value: 0, color: "#FF4500" },
-    { name: "Actos", value: 65, color: "#00BFFF" }
+    { name: "Vitamin C Co.", value: 150, color: "#6366F1" },
+    { name: "Paracetamol BP", value: 0, color: "#EF4444" },
+    { name: "Actos Metformin", value: 65, color: "#6366F1" },
+    { name: "Amoxicillin Cap", value: 12, color: "#F59E0B" }
   ];
 
   // ── Layout Routing Actions Switcher ─────────────────────────────────────────
@@ -157,9 +180,6 @@ export default function PharmacyManagement() {
     switch (actionLabel) {
       case "Create Invoice":
         setActivePage("InvoiceManagement");
-        break;
-      case "Supplier Directory":
-        setActivePage("SupplierDirectory");
         break;
       case "Medicine Catalog":
         setActivePage("MedicineManagement");
@@ -169,96 +189,105 @@ export default function PharmacyManagement() {
     }
   };
 
-  // ── Styling Specifications ──────────────────────────────────────────────────
   const cardStyle = {
     background: "#fff",
-    borderRadius: 8,
-    boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
-    padding: "20px",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+    padding: "24px",
     display: "flex",
     flexDirection: "column",
     minWidth: 0, 
+    border: "1px solid #f1f5f9"
   };
 
   const sectionTitle = {
-    fontSize: 14,
+    fontSize: "15px",
     fontWeight: 700,
-    color: "#333",
+    color: "#0f172a",
   };
 
-  const periodSelect = (value, onChange, options = ["7 days", "30 days", "All time"]) => (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        fontSize: 12, color: "#7c5cbf", fontWeight: 600,
-        border: "none", background: "transparent", cursor: "pointer", outline: "none",
-      }}
-    >
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
-  );
+  const descriptionStyle = {
+    fontSize: "12px",
+    color: "#64748b",
+    lineHeight: "1.5",
+    marginTop: "12px",
+    paddingTop: "12px",
+    borderTop: "1px dashed #e2e8f0"
+  };
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", fontFamily: "sans-serif", color: "#666" }}>
-        <h3>Syncing with Firestore Database records...</h3>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
+        <div className="text-center space-y-4 animate-pulse">
+          <div className="relative w-16 h-16 mx-auto">
+            <div className="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-t-indigo-600 animate-spin"></div>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Syncing Ledger Data Engine...</h3>
+            <p className="text-sm text-slate-400 mt-1">Fetching operational real-time collection schemas securely from cloud files.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   // ── Dynamic Render Router Return Layout ────────────────────────────────────
   if (activePage === "InvoiceManagement") {
-    // Return or render your Invoice component layout directly
     return (
-      <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-        <button onClick={() => setActivePage("Dashboard")} style={{ marginBottom: 16, cursor: "pointer" }}>← Back to Dashboard</button>
-        
+      <div className="min-h-screen bg-gray-100 p-4 font-sans animate-fadeIn">
+        <button onClick={() => setActivePage("Dashboard")} className="mb-4 bg-white border-2 border-gray-300 hover:border-purple-600 text-gray-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm hover:scale-[1.02] transform duration-200">
+          ← Back to Dashboard Overview
+        </button>
         <InvoiceManagement /> 
       </div>
     );
   }
 
-
-
   if (activePage === "MedicineManagement") {
     return (
-      <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-        <button onClick={() => setActivePage("Dashboard")} style={{ marginBottom: 16, cursor: "pointer" }}>← Back to Dashboard</button>
-       
-         <MedicineManagement /> 
+      <div className="min-h-screen bg-gray-100 p-4 font-sans animate-fadeIn">
+        <button onClick={() => setActivePage("Dashboard")} className="mb-4 bg-white border-2 border-gray-300 hover:border-purple-600 text-gray-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm hover:scale-[1.02] transform duration-200">
+          ← Back to Dashboard Overview
+        </button>
+        <MedicineManagement /> 
       </div>
     );
   }
 
   return (
-    <div style={{
-      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-      background: "#f4f5fb",
+    <div className="animate-fadeIn" style={{
+      fontFamily: "Inter, system-ui, sans-serif",
+      background: "#f8fafc",
       minHeight: "100vh",
-      padding: "clamp(12px, 3vw, 24px)",
+      padding: "clamp(16px, 4vw, 32px)",
       boxSizing: "border-box"
     }}>
       {/* ── Page Title Header ── */}
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#222", marginBottom: 20 }}>
-        Pharmacy Management Dashboard
-      </h2>
+      <div className="transition-all duration-500 transform translate-y-0 opacity-100" style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", tracking: "-0.025em" }}>
+          Clinical Pharmacy Dashboard Overview
+        </h2>
+        <p style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
+          Real-time auditing system tracking database counts, transactional logs, and pharmaceutical status layers.
+        </p>
+      </div>
 
       {/* ── Stat Aggregate Display Bar ── */}
       <div style={{ 
         display: "grid", 
         gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
-        gap: 16, 
-        marginBottom: 16 
+        gap: 20, 
+        marginBottom: 20 
       }}>
         {[
-          { label: "Total Customers", value: metrics.customersCount },
-          { label: "Total Medicines", value: metrics.medicinesCount },
-          { label: "Active Staff Units", value: metrics.staffCount },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ ...cardStyle, textAlign: "center", padding: "24px 16px" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#666", marginBottom: 6 }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#222" }}>{value}</div>
+          { label: "Total Customers", value: metrics.customersCount, border: "4px solid #3b82f6", animDelay: "delay-75" },
+          { label: "Total Medicines", value: metrics.medicinesCount, border: "4px solid #10b981", animDelay: "delay-100" },
+          { label: "Total Manufacturers", value: metrics.suppliersCount, border: "4px solid #6366f1", animDelay: "delay-150" },
+        ].map(({ label, value, border, animDelay }) => (
+          <div key={label} className={`transform transition-all duration-500 hover:scale-[1.02] hover:shadow-md ${animDelay} animate-slideUp`} style={{ ...cardStyle, borderLeft: border, padding: "20px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#64748b", marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>{value}</div>
           </div>
         ))}
       </div>
@@ -266,28 +295,31 @@ export default function PharmacyManagement() {
       {/* ── Call To Action Navigation Routing Block ── */}
       <div style={{ 
         display: "grid", 
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", 
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
         gap: 16, 
-        marginBottom: 24 
+        marginBottom: 28 
       }}>
-        {["Create Invoice", "Supplier Directory", "Medicine Catalog"].map(label => (
+        {[
+          { label: "Create Invoice", sub: "Billing & Transactions", delay: "delay-100" },
+          { label: "Medicine Catalog", sub: "Inventory Operations", delay: "delay-200" }
+        ].map(btn => (
           <button
-            key={label}
-            onClick={() => navigateToActionPage(label)}
+            key={btn.label}
+            onClick={() => navigateToActionPage(btn.label)}
+            className={`transition-all duration-300 transform hover:scale-[1.01] active:scale-95 hover:shadow-lg ${btn.delay} animate-slideUp`}
             style={{
-              background: "linear-gradient(135deg, #a78fe8 0%, #7c5cbf 100%)",
+              background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
               color: "#fff",
               border: "none",
-              borderRadius: 8,
-              padding: "14px 10px",
-              fontSize: 14,
-              fontWeight: 600,
+              borderRadius: "14px",
+              padding: "16px 20px",
+              textAlign: "left",
               cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(124, 92, 191, 0.15)",
-              whiteSpace: "nowrap"
+              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.15)",
             }}
           >
-            {label}
+            <div style={{ fontSize: "14px", fontWeight: 700, letterSpacing: "-0.01em" }}>{btn.label}</div>
+            <div style={{ fontSize: "11px", color: "#c7d2fe", marginTop: "2px" }}>Launch Module Panel →</div>
           </button>
         ))}
       </div>
@@ -295,52 +327,52 @@ export default function PharmacyManagement() {
       {/* ── Telemetry Charts Layout Grid ── */}
       <div style={{ 
         display: "grid", 
-        gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", 
-        gap: 20, 
+        gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", 
+        gap: 24, 
         marginBottom: 24 
       }}>
 
-        {/* Chart A: Area Graph Module */}
-        <div style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-            <span style={sectionTitle}>Purchase Reports</span>
-            {periodSelect(purchasePeriod, setPurchasePeriod)}
-          </div>
-          <div style={{ fontSize: 11, color: "#aaa", marginBottom: 16 }}>Live Firestore Core Sync</div>
+        {/* Chart A: Capital Valuation Area Graph */}
+        <div className="hover:shadow-md transition-shadow duration-300 animate-slideUp delay-200" style={cardStyle}>
+          <span style={sectionTitle}>Asset Holding Valuation (₦)</span>
+          <div style={{ fontSize: "11px", color: "#94a3b8", marginBottom: 16 }}>Financial Weight per Medicine Component</div>
 
           <div style={{ width: "100%", height: 180 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={purchaseTelemetry} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+              <AreaChart data={financialTelemetry} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="purchaseGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5B8DEF" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#5B8DEF" stopOpacity={0} />
+                  <linearGradient id="financialGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" stroke="#eee" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false}
                   tickFormatter={v => v >= 1000 ? `${v / 1000}K` : v}
                 />
                 <Tooltip content={<DashboardTooltip />} />
                 <Area
                   type="monotone" dataKey="value"
-                  stroke="#5B8DEF" strokeWidth={2.5}
-                  fill="url(#purchaseGrad)"
-                  dot={{ r: 4, fill: "#5B8DEF", stroke: "#fff", strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#10B981" strokeWidth={2.5}
+                  fill="url(#financialGrad)"
+                  dot={{ r: 4, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }}
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                  animationEasing="ease-in-out"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          <p style={descriptionStyle}>
+            <strong>Graph Explanation:</strong> This financial area graph charts the <strong>Total Asset Value locked in stock</strong> per medicine profile. It takes the calculated formula parameter <span style={{ fontFamily: "monospace", color: "#10B981" }}>(Unit Price × Available Stock Quantity)</span> to help clinical directors auditing the warehouse visually target where capital reserves are heavily focused.
+          </p>
         </div>
 
-        {/* Chart B: Distribution Donut Module */}
-        <div style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={sectionTitle}>Sells Categories</span>
-            {periodSelect(sellsPeriod, setSellsPeriod, ["All", "7 days", "30 days"])}
-          </div>
+        {/* Chart B: Stock Status Distribution Donut */}
+        <div className="hover:shadow-md transition-shadow duration-300 animate-slideUp delay-300" style={cardStyle}>
+          <span style={sectionTitle}>Inventory Health Segmentation</span>
+          <div style={{ fontSize: "11px", color: "#94a3b8", marginBottom: 16 }}>Batch Balance Status Aggregation</div>
 
           <div style={{ 
             display: "flex", 
@@ -350,20 +382,18 @@ export default function PharmacyManagement() {
             gap: 16,
             minHeight: 180 
           }}>
-            <div style={{ width: 160, height: 160, position: "relative", flexShrink: 0 }}>
+            <div style={{ width: 150, height: 150, position: "relative", flexShrink: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={sellsTelemetry}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
+                    data={distributionTelemetry}
+                    cx="50%" cy="50%"
+                    innerRadius={46} outerRadius={68}
                     dataKey="value"
-                    startAngle={90}
-                    endAngle={-270}
+                    isAnimationActive={true}
+                    animationDuration={1200}
                   >
-                    {sellsTelemetry.map((entry, i) => (
+                    {distributionTelemetry.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
@@ -372,36 +402,35 @@ export default function PharmacyManagement() {
               </ResponsiveContainer>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, flexGrow: 1, minWidth: "130px" }}>
-              {sellsTelemetry.map(({ name, color, value }) => (
-                <div key={name} style={{ fontSize: 12, color: "#555", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, flexGrow: 1, minWidth: "140px" }}>
+              {distributionTelemetry.map(({ name, color, value }) => (
+                <div key={name} style={{ fontSize: "11px", color: "#334155", display: "flex", alignItems: "center", stroke: "none", justifyStyle: "space-between", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <Dot color={color} /> <span>{name}</span>
                   </div>
-                  <span style={{ fontWeight: 600, marginLeft: 8 }}>{value} units</span>
+                  <span style={{ fontWeight: 700, marginLeft: 8, color: "#0f172a" }}>{value} items</span>
                 </div>
               ))}
             </div>
           </div>
+          <p style={descriptionStyle}>
+            <strong>Graph Explanation:</strong> This structural donut chart maps the <strong>proportion of stock health categories</strong> across the active formulary catalog. It isolates what items are running optimally, tracking items flagging critical warning triggers (<span style={{ color: "#F59E0B", fontWeight: 600 }}>&lt;15 units</span>), or items entirely depleted or structurally out-of-date.
+          </p>
         </div>
 
-        {/* Chart C: Full-Width Stock Level Ledger Bar */}
-        <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={sectionTitle}>Stock Level Volume Tracking</span>
-            {periodSelect(stockPeriod, setStockPeriod)}
-          </div>
+        {/* Chart C: Full-Width Stock Volume Bar Chart */}
+        <div className="hover:shadow-md transition-shadow duration-300 animate-slideUp delay-500" style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+          <span style={sectionTitle}>Dynamic Stock Volume Level Ledger Tracking</span>
+          <div style={{ fontSize: "11px", color: "#94a3b8", marginBottom: 16 }}>Quantitative Unit Levels Sourced Across Real-Time Batches</div>
 
-          <div style={{ width: "100%", height: 200 }}>
+          <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stockTelemetry} margin={{ top: 10, right: 5, left: -25, bottom: 5 }} barSize={32}>
-                <CartesianGrid strokeDasharray="4 4" stroke="#eee" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#777" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "#aaa" }} axisLine={false} tickLine={false}
-                  tickFormatter={v => v >= 1000 ? `${v / 1000}K` : v}
-                />
+              <BarChart data={stockTelemetry} margin={{ top: 10, right: 5, left: -20, bottom: 5 }} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#475569", fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#aaabbb" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<DashboardTooltip />} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1500} animationEasing="ease-out">
                   {stockTelemetry.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
@@ -409,33 +438,37 @@ export default function PharmacyManagement() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <p style={descriptionStyle}>
+            <strong>Graph Explanation:</strong> This transactional bar chart handles the <strong>direct volumetric quantity readout</strong> of active drugs loaded in your service file directory. Each column scale corresponds cleanly to total item counts. Colors dynamically shift to orange or flashing red vectors automatically whenever stock levels descend past compliance benchmarks.
+          </p>
         </div>
 
       </div>
 
       {/* ── Dynamic Storage & Stock Verification Log Data Table ── */}
-      <div style={{
+      <div className="hover:shadow-md transition-shadow duration-300 animate-slideUp delay-700" style={{
         background: "#fff",
-        borderRadius: 8,
-        boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
-        padding: "20px",
+        borderRadius: "16px",
+        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+        padding: "24px",
+        border: "1px solid #f1f5f9"
       }}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#222" }}>Live Storage Ledger (Expiry & Safety Monitored)</div>
-          <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Real-time functional monitoring sync automatically tracking batch safety intervals and inventory status constraints.</div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>Live Storage Safety Ledger</div>
+          <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>Real-time functional monitoring sync automatically tracking batch safety intervals and inventory status constraints.</div>
         </div>
 
-        <div style={{ overflowX: "auto", width: "100%", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ overflowX: "auto", width: "100%" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
-              <tr style={{ background: "#f4f5fb" }}>
+              <tr style={{ background: "#f8fafc" }}>
                 {["Index ID", "Drug Name", "Price Group", "QTY Available", "Status Alert"].map(h => (
                   <th key={h} style={{
-                    padding: "12px 14px",
+                    padding: "14px",
                     textAlign: h === "Index ID" ? "center" : "left",
-                    fontSize: 13,
+                    fontSize: "12px",
                     fontWeight: 700,
-                    color: "#444",
+                    color: "#475569",
                     borderBottom: "1px solid #e2e8f0",
                     whiteSpace: "nowrap",
                   }}>{h}</th>
@@ -443,60 +476,67 @@ export default function PharmacyManagement() {
               </tr>
             </thead>
             <tbody>
-              {medicinesList.map((row, i) => {
-                const stockQty = Number(row.qty || row.quantity || 0);
-                
-                // Expiry Time Evaluator
-                const isExpired = row.expire || row.expireDate ? new Date(row.expire || row.expireDate) < new Date() : false;
-                
-                // Item Availability Conditions (Must be stocked AND unexpired)
-                const itemAvailable = stockQty > 0 && !isExpired;
+              {medicinesList.length === 0 ? (
+                <tr className="transition-all duration-300">
+                  <td colSpan="5" style={{ padding: "32px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
+                    No operational pharmacy storage records discovered inside current dataset index fields.
+                  </td>
+                </tr>
+              ) : (
+                medicinesList.map((row, i) => {
+                  const stockQty = Number(row.qty || 0);
+                  const isExpired = row.expire ? new Date(row.expire) < new Date() : false;
+                  const itemAvailable = stockQty > 0 && !isExpired;
 
-                // Visual Status Tags Builder
-                let statusLabel = "Available";
-                let badgeBg = "#e6f6ee";
-                let badgeColor = "#22a06b";
+                  let statusLabel = "Available";
+                  let badgeBg = "#d1fae5";
+                  let badgeColor = "#065f46";
 
-                if (isExpired) {
-                  statusLabel = "Expired";
-                  badgeBg = "#fff7ed"; // Alert orange warning
-                  badgeColor = "#ea580c";
-                } else if (stockQty === 0) {
-                  statusLabel = "Out of Stock";
-                  badgeBg = "#fdf2f2"; // Standard hazard red
-                  badgeColor = "#e53e3e";
-                }
+                  if (isExpired) {
+                    statusLabel = "Expired Batch";
+                    badgeBg = "#ffedd5";
+                    badgeColor = "#9a3412";
+                  } else if (stockQty === 0) {
+                    statusLabel = "Depleted Stock";
+                    badgeBg = "#fee2e2";
+                    badgeColor = "#991b1b";
+                  } else if (stockQty < 15) {
+                    statusLabel = "Low Volume Alert";
+                    badgeBg = "#fef3c7";
+                    badgeColor = "#92400e";
+                  }
 
-                return (
-                  <tr key={row.id || i} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={{ padding: "12px 14px", textAlign: "center", fontSize: 13, color: "#666", fontFamily: "monospace" }}>
-                      {row.id ? row.id.substring(0, 6).toUpperCase() : i + 1}
-                    </td>
-                    <td style={{ padding: "12px 14px", fontSize: 13, fontWeight: 600, color: "#111", whiteSpace: "nowrap" }}>
-                      {row.name || row.drugName || "Unnamed Drug Component"}
-                    </td>
-                    <td style={{ padding: "12px 14px", fontSize: 13, color: "#333", fontWeight: 500, whiteSpace: "nowrap" }}>
-                      {row.price ? `₦${Number(row.price).toLocaleString()}` : "—"}
-                    </td>
-                    <td style={{ padding: "12px 14px", fontSize: 13, color: !itemAvailable ? "#e53e3e" : "#333", fontWeight: 600 }}>
-                      {stockQty} units
-                    </td>
-                    <td style={{ padding: "12px 14px" }}>
-                      <span style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: "3px 8px",
-                        borderRadius: 4,
-                        whiteSpace: "nowrap",
-                        background: badgeBg,
-                        color: badgeColor
-                      }}>
-                        {statusLabel}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={row.id || i} className="hover:bg-slate-50/80 transition-colors duration-200" style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                      <td style={{ padding: "14px", textAlign: "center", fontSize: "12px", color: "#6366f1", fontFamily: "monospace", fontWeight: 700 }}>
+                        {row.id ? row.id.substring(0, 6).toUpperCase() : i + 1}
+                      </td>
+                      <td style={{ padding: "14px", fontSize: "13px", fontWeight: 600, color: "#0f172a" }}>
+                        {row.name || "Unnamed Drug Component"}
+                      </td>
+                      <td style={{ padding: "14px", fontSize: "13px", color: "#334155", fontWeight: 500 }}>
+                        {row.price ? `₦${Number(row.price).toLocaleString()}` : "—"}
+                      </td>
+                      <td style={{ padding: "14px", fontSize: "13px", color: !itemAvailable ? "#ef4444" : "#0f172a", fontWeight: 700 }}>
+                        {stockQty} units
+                      </td>
+                      <td style={{ padding: "14px" }}>
+                        <span className="inline-block transform hover:scale-105 transition-transform duration-200" style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          whiteSpace: "nowrap",
+                          background: badgeBg,
+                          color: badgeColor
+                        }}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

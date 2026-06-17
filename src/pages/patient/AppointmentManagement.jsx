@@ -25,6 +25,10 @@ function AppointmentManagement() {
   const [isBooking, setIsBooking] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Visual success micro-interaction animation states
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [animationMessage, setAnimationMessage] = useState("");
+
   const [newAppt, setNewAppt] = useState({
     assignedDoctorId: "",
     appointmentDate: "",
@@ -58,6 +62,15 @@ function AppointmentManagement() {
     fetchData();
   }, []);
 
+  // Triggers the non-blocking visual feedback modal overlay
+  const triggerSuccessFeedback = (message) => {
+    setAnimationMessage(message);
+    setShowSuccessAnimation(true);
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+    }, 2400);
+  };
+
   const handleBookSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -75,9 +88,14 @@ function AppointmentManagement() {
       await createAppointment(payload);
       setIsBooking(false);
       setNewAppt({ assignedDoctorId: "", appointmentDate: "", appointmentTime: "", address: "" });
+      
+      // Fire the beautiful pop feedback overlay
+      triggerSuccessFeedback("Schedule Request Submitted for Practitioner Review!");
+      
       fetchData();
     } catch (error) {
-      alert("Failed to request appointment.");
+      console.error("Booking submission error:", error);
+      alert("Failed to securely route appointment slot parameters.");
     }
   };
 
@@ -111,9 +129,9 @@ function AppointmentManagement() {
     }
   };
 
-  if (loading) {
+  if (loading && appointments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 font-sans">
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 w-16 h-16 bg-indigo-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
           <Loader2 className="relative animate-spin text-indigo-600 z-10" size={44} />
@@ -124,10 +142,23 @@ function AppointmentManagement() {
   }
 
   return (
-    <div className="space-y-8 p-4 md:p-8 bg-slate-50/40 min-h-screen">
+    <div className="space-y-8 p-4 md:p-8 bg-slate-50/40 min-h-screen relative font-sans antialiased text-slate-800">
       
+      {/* ── BEAUTIFUL SUCCESS INTERACTION OVERLAY MODAL ── */}
+      {showSuccessAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300 animate-fadeIn">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl border border-emerald-100 flex flex-col items-center max-w-sm w-full mx-4 text-center transform scale-100 transition-transform duration-300 animate-scaleUp">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-4 shadow-inner animate-bounce">
+              <CheckCircle2 size={36} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Slot Reserved</h3>
+            <p className="text-sm font-medium text-slate-500 animate-pulse leading-relaxed">{animationMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* HEADER ACTION BANNER */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 p-6 md:p-8 text-white shadow-xl shadow-indigo-600/10 border border-white/10">
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 p-6 md:p-8 text-white shadow-xl shadow-indigo-600/10 border border-white/10 animate-fadeIn">
         <div className="absolute -right-6 -bottom-10 opacity-10 pointer-events-none">
           <CalendarDays size={240} />
         </div>
@@ -146,7 +177,7 @@ function AppointmentManagement() {
           
           <button 
             onClick={() => setIsBooking(true)}
-            className="self-start sm:self-center bg-white text-indigo-700 hover:text-white hover:bg-white/10 hover:backdrop-blur-md border border-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2.5 transition-all duration-300 active:scale-95 shadow-lg shadow-black/10 group"
+            className="self-start sm:self-center bg-white text-indigo-700 hover:text-white hover:bg-white/10 hover:backdrop-blur-md border border-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2.5 transition-all duration-300 active:scale-95 shadow-lg shadow-black/10 group text-sm"
           >
             <Plus size={18} className="transform group-hover:rotate-90 transition-transform duration-300" /> 
             <span>Book New Slot</span>
@@ -155,7 +186,7 @@ function AppointmentManagement() {
       </div>
 
       {/* FILTER SEARCH BAR */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-md shadow-slate-200/30 flex items-center gap-3">
+      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-md shadow-slate-200/30 flex items-center gap-3 transition-all focus-within:border-indigo-400">
         <Search size={20} className="text-slate-400 ml-2" />
         <input 
           type="text" 
@@ -173,7 +204,7 @@ function AppointmentManagement() {
 
       {/* APPOINTMENTS DATA WRAPPER */}
       {filteredAppointments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border border-slate-100 shadow-sm transform transition-all duration-300 animate-slideUp">
           <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-500 mb-4">
             <CalendarDays size={36} />
           </div>
@@ -181,7 +212,7 @@ function AppointmentManagement() {
           <p className="text-slate-400 text-sm mt-1 max-w-xs">You don't have any appointments currently running under this metric filter.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden transform transition-all duration-300 animate-slideUp">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] border-collapse text-left">
               <thead>
@@ -199,7 +230,7 @@ function AppointmentManagement() {
                     <tr key={appt.id} className="group hover:bg-slate-50/40 transition-colors duration-200">
                       <td className="px-6 py-4.5 font-semibold text-slate-800">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-inner">
                             {appt.doctorName ? appt.doctorName.replace("Dr. ", "").charAt(0) : "D"}
                           </div>
                           <span className="group-hover:text-indigo-600 transition-colors duration-200">
@@ -220,7 +251,7 @@ function AppointmentManagement() {
                         </span>
                       </td>
                       <td className="px-6 py-4.5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${statusDetails.bg}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border transition-all duration-200 ${statusDetails.bg}`}>
                           {statusDetails.icon}
                           {appt.status || "Pending"}
                         </span>
@@ -234,10 +265,10 @@ function AppointmentManagement() {
         </div>
       )}
 
-      {/* BOOKING INTERACTIVE SLIDE-OVER / MODAL GLASSMOPHISM */}
+      {/* BOOKING INTERACTIVE SLIDE-OVER / MODAL GLASSMORPHISM */}
       {isBooking && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col transform animate-scale-up">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col transform animate-scaleUp duration-300">
             
             {/* Modal Head */}
             <div className="bg-slate-50 px-6 py-5 border-b border-slate-100 flex justify-between items-center">
@@ -251,6 +282,7 @@ function AppointmentManagement() {
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setIsBooking(false)}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
               >
@@ -263,10 +295,10 @@ function AppointmentManagement() {
               
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Medical Professional</label>
-                <div className="relative">
+                <div className="relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50 hover:bg-slate-50 focus-within:border-indigo-500 transition-colors">
                   <select 
                     required 
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 appearance-none cursor-pointer"
+                    className="w-full bg-transparent p-3.5 pr-10 text-sm text-slate-700 font-medium focus:outline-none appearance-none cursor-pointer"
                     onChange={(e) => setNewAppt({...newAppt, assignedDoctorId: e.target.value})}
                   >
                     <option value="">Choose a Doctor</option>
@@ -285,34 +317,38 @@ function AppointmentManagement() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Date</label>
-                  <input 
-                    required 
-                    type="date" 
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
-                    onChange={(e) => setNewAppt({...newAppt, appointmentDate: e.target.value})}
-                  />
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50 hover:bg-slate-50 focus-within:border-indigo-500 transition-colors">
+                    <input 
+                      required 
+                      type="date" 
+                      className="w-full bg-transparent p-3.5 text-sm text-slate-700 font-medium focus:outline-none cursor-pointer" 
+                      onChange={(e) => setNewAppt({...newAppt, appointmentDate: e.target.value})}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preferred Time</label>
-                  <input 
-                    required 
-                    type="time" 
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
-                    onChange={(e) => setNewAppt({...newAppt, appointmentTime: e.target.value})}
-                  />
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50 hover:bg-slate-50 focus-within:border-indigo-500 transition-colors">
+                    <input 
+                      required 
+                      type="time" 
+                      className="w-full bg-transparent p-3.5 text-sm text-slate-700 font-medium focus:outline-none cursor-pointer" 
+                      onChange={(e) => setNewAppt({...newAppt, appointmentTime: e.target.value})}
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Appointment Notes / Symptoms</label>
-                <div className="relative">
+                <div className="relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50 hover:bg-slate-50 focus-within:border-indigo-500 transition-colors">
                   <textarea 
                     placeholder="Briefly describe the purpose of your checkup or any persistent symptoms..." 
                     rows={3}
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-slate-700 placeholder-slate-400 font-medium transition focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none" 
+                    className="w-full bg-transparent p-3.5 pr-10 text-sm text-slate-700 placeholder-slate-400 font-medium focus:outline-none resize-none" 
                     onChange={(e) => setNewAppt({...newAppt, address: e.target.value})}
                   />
-                  <div className="absolute right-4 bottom-4 text-slate-300">
+                  <div className="absolute right-4 bottom-4 text-slate-300 pointer-events-none">
                     <FileText size={16} />
                   </div>
                 </div>
@@ -323,13 +359,13 @@ function AppointmentManagement() {
                 <button 
                   type="button"
                   onClick={() => setIsBooking(false)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold transition-colors active:scale-95 transform"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-bold transition shadow-md shadow-indigo-600/10"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-bold transition shadow-md shadow-indigo-600/10 active:scale-95 transform"
                 >
                   Submit Schedule Request
                 </button>

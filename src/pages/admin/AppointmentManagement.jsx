@@ -7,7 +7,10 @@ import {
   FileText,
   User,
   MapPin,
-  CheckCircle
+  CheckCircle,
+  Receipt,
+  Edit2,
+  CheckCircle2
 } from "lucide-react";
 import {
   createAppointment,
@@ -30,6 +33,10 @@ function AppointmentManagement() {
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+
+  // Animation state banner triggers
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [animationMessage, setAnimationMessage] = useState("");
 
   // Form State modified to securely record assignedDoctorId
   const [formData, setFormData] = useState({
@@ -93,7 +100,7 @@ function AppointmentManagement() {
   };
 
   const handleSelectPatient = (patient) => {
-    const fullName = `Patient: ${patient.firstName} ${patient.lastName}`;
+    const fullName = `${patient.firstName} ${patient.lastName}`;
     setSelectedPatient(patient);
     setPatientSearch(`${patient.firstName} ${patient.lastName} (NIC: ${patient.nic || "N/A"})`);
     setShowPatientDropdown(false);
@@ -105,7 +112,6 @@ function AppointmentManagement() {
     }));
   };
 
-  // Intercepts doctor assignment selection to save both Name and UID parameters
   const handleDoctorChange = (e) => {
     const selectedId = e.target.value;
     
@@ -148,6 +154,15 @@ function AppointmentManagement() {
     setSelectedPatient(null);
   };
 
+  // Triggers the non-blocking visual micro-interaction overlay
+  const triggerSuccessFeedback = (message) => {
+    setAnimationMessage(message);
+    setShowSuccessAnimation(true);
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+    }, 2200);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!formData.patientId) {
@@ -164,6 +179,7 @@ function AppointmentManagement() {
       const { id, ...payload } = formData;
       await createAppointment(payload);
       clearForm();
+      triggerSuccessFeedback("Clinical Appointment Booked Successfully!");
       const apptData = await getAppointments();
       setAppointments(apptData);
     } catch (error) {
@@ -173,7 +189,8 @@ function AppointmentManagement() {
     }
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (e) => {
+    if (e) e.preventDefault();
     if (!formData.id) {
       alert("Please choose an appointment record from the directory table below first.");
       return;
@@ -183,6 +200,7 @@ function AppointmentManagement() {
       const { id, ...updatedPayload } = formData;
       await updateAppointment(id, updatedPayload);
       clearForm();
+      triggerSuccessFeedback("Schedule Parameters Updated Flawlessly!");
       const apptData = await getAppointments();
       setAppointments(apptData);
     } catch (error) {
@@ -198,6 +216,7 @@ function AppointmentManagement() {
       try {
         setLoading(true);
         await deleteAppointment(id);
+        triggerSuccessFeedback("Schedule Index Entry Dropped and Purged.");
         if (formData.id === id) clearForm();
         const apptData = await getAppointments();
         setAppointments(apptData);
@@ -238,232 +257,297 @@ function AppointmentManagement() {
     return nameMatch || doctorMatch || idMatch;
   });
 
+  // --- CDN-safe PDF Generator Function ---
+  const generatePDF = () => {
+    const { jsPDF } = window.jspdf || {};
+    
+    if (!jsPDF) {
+      alert("PDF library is still loading from CDN. Please try again in a moment.");
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.text("Appointments Report", 14, 15);
+    
+    doc.autoTable({
+      startY: 25,
+      head: [["Ref ID", "Patient Name", "Assigned Doctor", "Date", "Time", "Notes"]],
+      body: filteredAppointments.map((item) => [
+        item.id ? item.id.substring(0, 8) + '...' : 'N/A', 
+        item.patientName || 'N/A', 
+        item.doctorName || 'N/A', 
+        item.appointmentDate || 'N/A', 
+        item.appointmentTime || 'N/A', 
+        item.address || 'N/A'
+      ]),
+    });
+    
+    doc.save("appointments-report.pdf");
+  };
+
   return (
-    <div className="bg-gray-100 p-3 sm:p-4 lg:p-6 space-y-6">
-      {/* Header Panel */}
-      <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm p-4 sm:p-5 flex justify-between items-center">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">
+    <div className="min-h-screen bg-gray-100 p-4 md:p-6 font-sans antialiased text-gray-800 relative">
+      
+      {/* Success Micro-Interaction Notification Modal Backdrop */}
+      {showSuccessAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all duration-300 animate-fadeIn">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl border border-emerald-100 flex flex-col items-center max-w-sm mx-auto text-center transform scale-100 transition-transform duration-300">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-4 shadow-inner animate-bounce">
+              <CheckCircle2 size={36} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Schedule Synchronized</h3>
+            <p className="text-sm font-medium text-slate-500 animate-pulse">{animationMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Top Header Panel */}
+      <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 max-w-7xl mx-auto flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-wide text-gray-900 flex items-center gap-2">
+          <Calendar className="text-purple-600" size={22} />
           Appointment Management
         </h1>
         {loading && (
-          <span className="text-indigo-600 font-medium animate-pulse text-sm">
-            Syncing registry files...
+          <span className="text-purple-600 font-semibold animate-pulse text-xs bg-purple-50 px-3 py-1 rounded-lg">
+            Syncing registry...
           </span>
         )}
       </div>
 
-      {/* Booking Form Layout */}
-      <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-5 lg:p-8">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-8">
-          <button className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 w-full sm:w-auto shadow-md">
-            <FileText size={18} /> Generate Report
-          </button>
+      {/* Main Control Panel Card */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8 mb-6 max-w-7xl mx-auto">
+        
+        {/* Action Button & Search Row */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+          <div className="text-sm font-semibold text-purple-600 bg-purple-50 px-4 py-2 rounded-lg">
+            {formData.id ? `⚠️ Editing Appointment Ref: ${formData.id.substring(0, 8)}...` : "✨ Scheduling New Entry"}
+          </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-            <input
-              type="text"
-              placeholder="Search Table Directory"
-              value={tableSearchQuery}
-              onChange={(e) => setTableSearchQuery(e.target.value)}
-              className="border-2 border-gray-300 rounded-xl px-4 py-3 w-full sm:w-[280px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button className="bg-yellow-400 hover:bg-yellow-50 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md">
-              <Search size={18} /> Search
+          <div className="flex flex-col sm:flex-row w-full lg:w-auto items-center gap-3">
+            <button 
+              onClick={generatePDF}
+              type="button"
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-semibold px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm hover:from-purple-700 hover:to-indigo-600 transition-all transform active:scale-95 text-sm"
+            >
+              <FileText size={18} /> Generate Report
             </button>
+            <div className="relative w-full sm:w-64 flex items-center">
+              <span className="absolute left-3 text-gray-400">
+                <Search size={18} />
+              </span>
+              <input
+                type="text"
+                placeholder="Search Patient, Doctor, or ID"
+                value={tableSearchQuery}
+                onChange={(e) => setTableSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:border-indigo-500 placeholder-gray-400 transition-colors text-sm"
+              />
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-5">
-          {/* Patient Selection Row */}
-          <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Find Registered Patient
-            </label>
+        {/* Form Inputs Component */}
+        <form onSubmit={formData.id ? handleUpdate : handleRegister}>
+          <div className="space-y-5">
+            
+            {/* Patient Picker Field */}
             <div className="relative">
-              <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Type Patient Name or NIC number to lookup record profiles..."
-                value={patientSearch}
-                onChange={handlePatientSearchChange}
-                onFocus={() => patientSearch.trim() && setShowPatientDropdown(true)}
-                className="w-full border-2 border-gray-300 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+              <div className="relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white">
+                <span className="absolute left-4 top-3.5 text-gray-400 pointer-events-none">
+                  <User size={18} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Type Patient Name or NIC number to lookup record profiles..."
+                  value={patientSearch}
+                  onChange={handlePatientSearchChange}
+                  onFocus={() => patientSearch.trim() && setShowPatientDropdown(true)}
+                  className="w-full pl-11 pr-4 py-3 bg-transparent text-gray-700 focus:outline-none placeholder-gray-400 text-sm"
+                />
+              </div>
 
-            {/* Live Search Matching Dropdown */}
-            {showPatientDropdown && filteredPatients.length > 0 && (
-              <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
-                {filteredPatients.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectPatient(p)}
-                    className="p-3 hover:bg-indigo-50 cursor-pointer flex justify-between items-center transition"
-                  >
-                    <div>
-                      <span className="font-semibold text-gray-800">{p.firstName} {p.lastName}</span>
-                      <span className="text-xs text-gray-400 block">{p.email || "No Email Associated"}</span>
+              {/* Dynamic Suggestions Dropdown overlay matching layout structures */}
+              {showPatientDropdown && filteredPatients.length > 0 && (
+                <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+                  {filteredPatients.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelectPatient(p)}
+                      className="p-3 hover:bg-purple-50 cursor-pointer flex justify-between items-center transition text-sm"
+                    >
+                      <div>
+                        <span className="font-semibold text-gray-800">{p.firstName} {p.lastName}</span>
+                        <span className="text-xs text-gray-400 block">{p.email || "No Email"}</span>
+                      </div>
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-600">
+                        NIC: {p.nic || "—"}
+                      </span>
                     </div>
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded font-mono text-gray-600">
-                      NIC: {p.nic || "—"}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+              
+              {showPatientDropdown && filteredPatients.length === 0 && (
+                <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 p-4 rounded-xl shadow-xl text-center text-sm text-gray-400">
+                  No registered matching patient profiles found.
+                </div>
+              )}
+            </div>
+
+            {/* Profile Connected Context Alert Box */}
+            {selectedPatient && (
+              <div className="bg-purple-50 border border-purple-100 p-3.5 rounded-xl flex items-start gap-2.5 text-purple-900 text-sm animate-fadeIn">
+                <CheckCircle size={18} className="text-purple-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Patient Profile Attached & Verified</p>
+                  <p className="text-xs text-purple-700 mt-0.5">
+                    Mobile: {selectedPatient.mobile || "N/A"} | DOB: {selectedPatient.dob || "N/A"} | Reference UID: {selectedPatient.id}
+                  </p>
+                </div>
               </div>
             )}
-            
-            {showPatientDropdown && filteredPatients.length === 0 && (
-              <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 p-4 rounded-xl shadow-xl text-center text-sm text-gray-400">
-                No registered matching patient profiles found.
+
+            {/* Form Fields Column Matrix */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white">
+                <input
+                  type="date"
+                  name="appointmentDate"
+                  value={formData.appointmentDate}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-transparent text-gray-700 focus:outline-none text-sm cursor-pointer"
+                />
               </div>
-            )}
-          </div>
 
-          {/* Connected Profile Status Indicator Context */}
-          {selectedPatient && (
-            <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-start gap-2.5 text-emerald-800 text-sm animate-fadeIn">
-              <CheckCircle size={18} className="text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Patient Attached Verified</p>
-                <p className="text-xs text-emerald-700">
-                  Mobile: {selectedPatient.mobile || "N/A"} | DOB: {selectedPatient.dob || "N/A"} | ID Link Reference: {selectedPatient.id}
-                </p>
+              <div className="relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white">
+                <input
+                  type="time"
+                  name="appointmentTime"
+                  value={formData.appointmentTime}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-transparent text-gray-700 focus:outline-none text-sm cursor-pointer"
+                />
+              </div>
+
+              <div className="relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white">
+                <select
+                  name="assignedDoctorId"
+                  value={formData.assignedDoctorId || "Doctor Name"}
+                  onChange={handleDoctorChange}
+                  required
+                  className="w-full px-4 py-3 bg-transparent text-gray-700 focus:outline-none appearance-none cursor-pointer text-sm"
+                >
+                  <option value="Doctor Name">Select Doctor Name</option>
+                  {doctors.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      Dr. {doc.firstName} {doc.lastName}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {/* Date, Time & Doctor Layout Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
-            <div className="relative">
-              <input
-                type="date"
-                name="appointmentDate"
-                value={formData.appointmentDate}
+            {/* Directives Area */}
+            <div className="relative rounded-xl border-2 border-gray-300 focus-within:border-indigo-500 overflow-hidden transition-colors bg-white">
+              <span className="absolute left-4 top-3.5 text-gray-400 pointer-events-none">
+                <MapPin size={18} />
+              </span>
+              <textarea
+                rows="2"
+                name="address"
+                value={formData.address}
                 onChange={handleInputChange}
-                required
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Notes or Location Directives (e.g., Room 304, Consultation Wing B)"
+                className="w-full pl-11 pr-4 py-3 bg-transparent text-gray-700 focus:outline-none placeholder-gray-400 resize-none text-sm"
               />
-            
             </div>
 
-            <div className="relative">
-              <input
-                type="time"
-                name="appointmentTime"
-                value={formData.appointmentTime}
-                onChange={handleInputChange}
-                required
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            
+            {/* Action Buttons Hub Layout */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-xl mx-auto pt-4">
+              <button 
+                type="submit"
+                className="w-full py-3.5 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2 text-sm"
+              >
+                <Calendar size={18} />
+                {formData.id ? "Update Schedule Parameters" : "Book Clinical Appointment"}
+              </button>
+              
+              {formData.id && (
+                <button 
+                  type="button"
+                  onClick={clearForm}
+                  className="w-full sm:w-auto px-6 py-3.5 text-gray-500 hover:text-gray-700 border-2 border-gray-300 hover:border-gray-400 font-semibold rounded-xl flex items-center justify-center gap-1 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
-
-            {/* Value binds to doc.id instead of plain text names */}
-            <select
-              name="assignedDoctorId"
-              value={formData.assignedDoctorId || "Doctor Name"}
-              onChange={handleDoctorChange}
-              required
-              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="Doctor Name">Doctor Name</option>
-              {doctors.map((doc) => (
-                <option key={doc.id} value={doc.id}>
-                  Dr. {doc.firstName} {doc.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Contextual Notes / Location Details */}
-          <div className="relative">
-            <MapPin size={18} className="absolute left-4 top-4 text-gray-400" />
-            <textarea
-              rows="3"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              placeholder="Notes or Location Directives (e.g., Room 304, Consultation Wing B)"
-              className="w-full border-2 border-gray-300 rounded-xl pl-11 pr-4 pt-4 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Operation Core Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-green-700 to-lime-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition"
-            >
-              Book Appointment
-            </button>
-            <button
-              type="button"
-              onClick={handleUpdate}
-              className="w-full bg-gradient-to-r from-indigo-700 to-purple-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition"
-            >
-              Update Schedule
-            </button>
-            <button
-              type="button"
-              onClick={clearForm}
-              className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-[1.02] transition"
-            >
-              Clear Form
-            </button>
           </div>
         </form>
       </div>
 
-      {/* Directory Table View */}
-      <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-5 lg:p-6 overflow-hidden">
-        <h2 className="text-xl font-bold text-gray-800">Scheduled Appointments Log</h2>
-        <p className="text-sm text-gray-500 mb-5">
-          Select an active schedule log row to edit timing parameters or reassign clinical staff contexts.
-        </p>
+      {/* Synchronized Recent Appointments Table Registry */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 max-w-7xl mx-auto overflow-hidden">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Appointments Registry</h2>
 
-        <div className="overflow-x-auto rounded-xl">
-          <table className="w-full min-w-[800px] text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-100 text-gray-700 border-b">
-                <th className="text-left p-4">Booking Ref</th>
-                <th className="text-left p-4">Patient Profile Name</th>
-                <th className="text-left p-4">Assigned Medical Doctor</th>
-                <th className="text-left p-4">Scheduled Date</th>
-                <th className="text-left p-4">Scheduled Time</th>
-                <th className="text-left p-4">Directives / Notes</th>
-                <th className="text-left p-4 text-center">Action</th>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider w-24 text-center">Booking Ref</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider">Patient Name</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider">Assigned Doctor</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider text-center">Scheduled Date</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider">Scheduled Time</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider">Directives / Notes</th>
+                <th className="p-4 text-xs font-bold uppercase text-gray-600 tracking-wider text-center w-28">Action</th>
               </tr>
             </thead>
 
-            <tbody>
+            <tbody className="divide-y divide-gray-50">
               {filteredAppointments.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-gray-400 font-medium">
-                    No matching clinical appointment records indexed.
+                  <td colSpan="7" className="p-8 text-sm text-center text-gray-400">
+                    No matching generated appointments found in this directory.
                   </td>
                 </tr>
               ) : (
-                filteredAppointments.map((item) => (
-                  <tr
-                    key={item.id}
+                filteredAppointments.map((item, index) => (
+                  <tr 
+                    key={item.id} 
                     onClick={() => handleSelectRow(item)}
-                    className="border-b hover:bg-indigo-50/40 cursor-pointer transition"
+                    className={`hover:bg-gray-50/70 transition-colors cursor-pointer ${index % 2 === 1 ? 'bg-gray-50/30' : ''} ${formData.id === item.id ? 'bg-purple-50' : ''}`}
                   >
-                    <td className="p-4 font-mono text-xs text-indigo-600 font-bold truncate max-w-[120px]">
-                      {item.id}
+                    <td className="p-4 text-xs font-mono font-bold text-indigo-600 text-center" title={item.id}>
+                      {item.id ? `${item.id.substring(0, 7)}...` : '—'}
                     </td>
-                    <td className="p-4 font-semibold text-gray-800">{item.patientName}</td>
-                    <td className="p-4 text-gray-900 font-medium">{item.doctorName}</td>
-                    <td className="p-4 text-gray-600 font-medium">{item.appointmentDate}</td>
-                    <td className="p-4 text-gray-600 font-medium">{item.appointmentTime}</td>
-                    <td className="p-4 text-gray-400 italic truncate max-w-[180px]">{item.address || "—"}</td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={(e) => handleDelete(item.id, e)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                    <td className="p-4 text-sm font-semibold text-gray-900">{item.patientName}</td>
+                    <td className="p-4 text-sm text-gray-600">{item.doctorName}</td>
+                    <td className="p-4 text-sm text-gray-600 text-center">{item.appointmentDate}</td>
+                    <td className="p-4 text-sm text-gray-600">{item.appointmentTime}</td>
+                    <td className="p-4 text-sm text-gray-400 italic truncate max-w-[180px]">{item.address || "—"}</td>
+
+                    <td className="p-4 text-sm text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleSelectRow(item); }}
+                          className="text-indigo-500 hover:text-indigo-700 p-1 rounded hover:bg-indigo-50 transition-colors"
+                          title="Load Appointment Parameters"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={(e) => handleDelete(item.id, e)}
+                          className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                          title="Void Schedule Block"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
